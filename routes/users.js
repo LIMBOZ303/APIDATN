@@ -8,11 +8,12 @@ router.get('/', function(req, res, next) {
   res.send('respond with a resource');
 });
 //register user
+//http://localhost:2025/users/register
 router.post('/register', async (req, res) => {
-  const { name, email, password } = req.body;
+  const { name, email, password, phone, address, role, avatar } = req.body;
   
   try {
-    const newUser = new User ({name, email, password});
+    const newUser = new User ({name, email, password, phone, address, role, avatar});
     await newUser.save();
     res.status(201).send('User created successfully');
   } catch (error) {
@@ -21,6 +22,7 @@ router.post('/register', async (req, res) => {
 });
 
 //login user
+//http://localhost:2025/users/login
 router.post('/login', async (req, res) => {
   const { email, password } = req.body;
   try {
