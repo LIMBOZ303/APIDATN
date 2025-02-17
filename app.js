@@ -6,8 +6,12 @@ var logger = require('morgan');
 const mongoose = require('mongoose');
 var indexRouter = require('./routes/index');
 var usersRouter = require('./routes/users');
-
+var weddingorderRouter = require('./routes/weddingorder');
+var planRouter = require('./routes/plan');
+var clothesRouter = require('./routes/clothes');
+var invitationRouter = require('./routes/invitation');
 var app = express();
+app.use(express.json());//xử lý json
 
 // view engine setup
 app.set('views', path.join(__dirname, 'views'));
@@ -21,6 +25,10 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 app.use('/', indexRouter);
 app.use('/users', usersRouter);
+app.use('/weddingorder', weddingorderRouter);
+app.use('/plan', planRouter);
+app.use('/clothes', clothesRouter);
+app.use('/invitation', invitationRouter);
 
 mongoose.connect('mongodb://localhost:27017/userDB')
     .then(() => {
