@@ -10,6 +10,8 @@ var weddingorderRouter = require('./routes/weddingorder');
 var planRouter = require('./routes/plan');
 var clothesRouter = require('./routes/clothes');
 var invitationRouter = require('./routes/invitation');
+var hallRouter = require('./routes/weddinghall');
+
 var app = express();
 app.use(express.json());//xử lý json
 
@@ -29,6 +31,7 @@ app.use('/weddingorder', weddingorderRouter);
 app.use('/plan', planRouter);
 app.use('/clothes', clothesRouter);
 app.use('/invitation', invitationRouter);
+app.use('/hall',hallRouter );
 
 mongoose.connect('mongodb://localhost:27017/userDB')
     .then(() => {

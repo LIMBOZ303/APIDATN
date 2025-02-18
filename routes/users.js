@@ -7,6 +7,16 @@ const User = require('../models/userModel');
 router.get('/', function(req, res, next) {
   res.send('respond with a resource');
 });
+
+router.get('/all', async (req, res) => {
+  try {
+     const users = await User.find(); // Lấy tất cả người dùng từ database
+     res.status(200).json(users); // Trả về danh sách người dùng dưới dạng JSON
+  } catch (err) {
+     res.status(500).json({ message: 'Lỗi khi lấy danh sách người dùng', error: err });
+  }
+});
+
 //register user
 //http://localhost:2025/users/register
 router.post('/register', async (req, res) => {

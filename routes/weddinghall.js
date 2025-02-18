@@ -5,19 +5,19 @@ const WeddingHall = require('../models/hallModel');
 
 //thêm hội trường
 router.post('/add', async (req, res) => {
-    const { name, price, soluongkhach, location, dateevent, imageUrl } = req.body;
-    const weddinghall = new WeddingHall({ name, price, soluongkhach, location, dateevent, imageUrl });
+    const { name, price, soluongkhach, location, sanh, dateevent, imageUrl } = req.body;
+    const weddinghall = new WeddingHall({ name, price, soluongkhach, location, sanh, dateevent, imageUrl });
     try {
         await weddinghall.save();
-        return res.status(200).json({message: "Thêm hội trường thành công", data: weddinghall});
+        return res.status(200).json({ message: "Thêm hội trường thành công", data: weddinghall });
     } catch (error) {
         console.log(error);
-        return res.status(500).json({error: "Lỗi khi thêm hội trường"});
+        return res.status(500).json({ error: "Lỗi khi thêm hội trường" });
     }
 });
 
 // Lấy tất cả Wedding Halls (GET)
-router.get('/', async (req, res) => {
+router.get('/all', async (req, res) => {
     try {
         const weddingHalls = await WeddingHall.find();
         return res.status(200).json(weddingHalls);
@@ -39,12 +39,12 @@ router.get('/:id', async (req, res) => {
 
 // Cập nhật Wedding Hall (PUT)
 router.put('/:id', async (req, res) => {
-    const { name, price, soLuongKhach, location, dateEvent, imageUrl } = req.body;
+    const { name, price, soLuongKhach, location, sanh, dateEvent, imageUrl } = req.body;
 
     try {
         const updatedWeddingHall = await WeddingHall.findByIdAndUpdate(
             req.params.id,
-            { name, price, soLuongKhach, location, dateEvent, imageUrl },
+            { name, price, soLuongKhach, location, sanh, dateEvent, imageUrl },
             { new: true }
         );
         if (!updatedWeddingHall) return res.status(404).json({ error: 'Wedding hall not found' });

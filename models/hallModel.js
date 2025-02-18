@@ -5,7 +5,8 @@ const hallSchema = new mongoose.Schema({
     price: {type: Number, required: true},
     soluongkhach: {type: Number, required: true},
     location: {type: String},
-    dateevent: {type: Date, required: true},
+    sanh: {type: number},
+    dateevent: {type: Date, required: false},
     imageUrl: {type: String},
 }, {timestamps: true});
 
