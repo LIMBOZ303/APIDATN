@@ -11,7 +11,8 @@ var planRouter = require('./routes/plan');
 var clothesRouter = require('./routes/clothes');
 var invitationRouter = require('./routes/invitation');
 var hallRouter = require('./routes/weddinghall');
-
+var cateringRouter = require('./routes/catering');
+var flowerRouter = require('./routes/flower');
 var app = express();
 app.use(express.json());//xử lý json
 
@@ -32,6 +33,8 @@ app.use('/plan', planRouter);
 app.use('/clothes', clothesRouter);
 app.use('/invitation', invitationRouter);
 app.use('/hall',hallRouter );
+app.use('/catering', cateringRouter);
+app.use('/flower', flowerRouter);
 
 mongoose.connect('mongodb://localhost:27017/userDB')
     .then(() => {
