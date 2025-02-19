@@ -16,7 +16,7 @@ router.post('/add', async (req, res) => {
 });
 
 //lấy tất cả áo
-router.get('/getall', async (req, res) => {
+router.get('/all', async (req, res) => {
     try {
         const clothesEntries = await Clothes.find();
         res.status(200).send(clothesEntries);

@@ -18,10 +18,10 @@ router.post('/add', async (req, res) => {
 });
 
 //lấy tất cả lời mời
-router.get('/getall', async (req, res) => {
+router.get('/all', async (req, res) => {
     try {
         const invitations = await Invitation.find();
-        return res.status(200).json({message: "Lấy tất cả lời mời thành công"});
+        return res.status(200).json({message: "Lấy tất cả lời mời thành công", data: invitations});
     } catch (error) {
         console.log(error);
         return res.status(500).json({error: "Lỗi khi lấy tất cả lời mời"});
@@ -50,7 +50,7 @@ router.put('/update/:id', async (req, res) => {
         if (!updateinvitation) {
             return res.status(404).json(updateinvitation);
         }
-        return res.status(200).json({message: "Cập nhật lời mời thành công",});
+        return res.status(200).json({message: "Cập nhật lời mời thành công", });
     } catch (error) {
         console.log(error);
         return res.status(500).json({error: "Lỗi khi cập nhật lời mời"});
