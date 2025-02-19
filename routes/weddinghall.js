@@ -20,9 +20,9 @@ router.post('/add', async (req, res) => {
 router.get('/all', async (req, res) => {
     try {
         const weddingHalls = await WeddingHall.find();
-        return res.status(200).json(weddingHalls);
+        return res.status(200).json({status: true, data: weddingHalls });
     } catch (error) {
-        return res.status(500).json({ error: 'Error fetching wedding halls' });
+        return res.status(500).json({ status: false, message: "Thất Bại" });
     }
 });
 
