@@ -5,7 +5,7 @@ const Flower = require('../models/flowerModel');
 
 //thêm hoa
 router.post('/add', async (req, res) => {
-    const { name, price,description, status, imageUrl } = req.body;
+    const { name, price, description, status, imageUrl } = req.body;
     const flower = new Flower({ name, price, description, status, imageUrl });
     try {
         await flower.save();
@@ -17,7 +17,7 @@ router.post('/add', async (req, res) => {
 });
 
 //lấy danh sách tất cả hoa
-router.get('/getall', async (req, res) => {
+router.get('/all', async (req, res) => {
     try {
         const flowers = await Flower.find();
         return res.status(200).json({ message: "Lấy danh sách tất cả hoa thành công", data: flowers });
