@@ -19,10 +19,10 @@ router.post('/add', async (req, res) => {
 router.get('/all', async (req, res) => {
     try {
         const clothesEntries = await Clothes.find();
-        res.status(200).send(clothesEntries);
+        res.status(200).json({status: true, data: clothesEntries });
     } catch (error) {
         console.log(error);
-        res.status(500).send("Lỗi khi lấy tất cả áo");
+        res.status(500).json({ status: false, message: "Thất Bại" });
     }
 });
 
