@@ -6,9 +6,14 @@ const clothesSchema = new mongoose.Schema({
     status: {type: String, enum: ['active', 'inactive'], default: 'active'},
     category: {type: String, required: true},
     gender: {type: String, enum: ['male', 'female', 'unisex'], required: true},
-    description: {type: String, required: false,},
-    imageUrl: {type: String, required: false},
+    Silhouette: {type: String, required: true},
+    fabrics: {type: String, required: true},
+    color: {type: String, required: true},
+    neckline: {type: String, required: true},
+    sleeve: {type: String, required: true},
+    imageUrl: {type: [String], required: false},  // Chắc chắn là kiểu [String]
 }, {timestamps: true});
+
 
 
 module.exports = mongoose.model('Clothes', clothesSchema);

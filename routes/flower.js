@@ -9,10 +9,10 @@ router.post('/add', async (req, res) => {
     const flower = new Flower({ name, price, description, status, imageUrl });
     try {
         await flower.save();
-        return res.status(200).json({ message: "Thêm hoa thành công", data: flower });
+        return res.status(200).json({status:true, message: "Thêm hoa thành công", data: flower });
     } catch (error) {
         console.log(error);
-        return res.status(500).json({ message: "Lỗi khi thêm hoa", error: error });
+        return res.status(500).json({status:false, message: "Lỗi khi thêm hoa", error: error });
     }
 });
 
@@ -20,10 +20,10 @@ router.post('/add', async (req, res) => {
 router.get('/all', async (req, res) => {
     try {
         const flowers = await Flower.find();
-        return res.status(200).json({ message: "Lấy danh sách tất cả hoa thành công", data: flowers });
+        return res.status(200).json({status:true, message: "Lấy danh sách tất cả hoa thành công", data: flowers });
     } catch (error) {
         console.log(error);
-        return res.status(500).json({ message: "Lỗi khi lấy danh sách tất cả hoa", error: error });
+        return res.status(500).json({status:false, message: "Lỗi khi lấy danh sách tất cả hoa", error: error });
     }
 });
 
@@ -32,12 +32,12 @@ router.get('/getbyid/:id', async (req, res) => {
     try {
         const flower = await Flower.findById(req.params.id);
         if (!flower) {
-            return res.status(404).json({ message: "Không tìm thấy hoa" });
+            return res.status(404).json({status:false, message: "Không tìm thấy hoa" });
         }
-        return res.status(200).json({ message: "Lấy hoa theo id thành công", data: flower });
+        return res.status(200).json({status:true, message: "Lấy hoa theo id thành công", data: flower });
     } catch (error) {
         console.log(error);
-        return res.status(500).json({ message: "Lỗi khi lấy hoa theo id", error: error });
+        return res.status(500).json({status:false, message: "Lỗi khi lấy hoa theo id", error: error });
     }
 });
 
@@ -47,12 +47,12 @@ router.put('/update/:id', async (req, res) => {
     try {
         const flower = await Flower.findByIdAndUpdate(req.params.id, { name, price, description, status, imageUrl }, { new: true });
         if (!flower) {
-            return res.status(404).json({ message: "Không tìm thấy hoa" });
+            return res.status(404).json({status:false, message: "Không tìm thấy hoa" });
         }
-        return res.status(200).json({ message: "Cập nhật hoa thành công", data: flower });
+        return res.status(200).json({ status:true,message: "Cập nhật hoa thành công", data: flower });
     } catch (error) {
         console.log(error);
-        return res.status(500).json({ message: "Lỗi khi cập nhật hoa", error: error });
+        return res.status(500).json({status:false, message: "Lỗi khi cập nhật hoa", error: error });
     }
 });
 
@@ -61,12 +61,12 @@ router.delete('/delete/:id', async (req, res) => {
     try {
         const flower = await Flower.findByIdAndDelete(req.params.id);
         if (!flower) {
-            return res.status(404).json({ message: "Không tìm thấy hoa" });
+            return res.status(404).json({status:false, message: "Không tìm thấy hoa" });
         }
-        return res.status(200).json({ message: "Xóa hoa thành công", data: flower });
+        return res.status(200).json({status:true, message: "Xóa hoa thành công", data: flower });
     } catch (error) {
         console.log(error);
-        return res.status(500).json({ message: "Lỗi khi xóa hoa", error: error });
+        return res.status(500).json({status:false, message: "Lỗi khi xóa hoa", error: error });
     }
 });
 module.exports = router;
