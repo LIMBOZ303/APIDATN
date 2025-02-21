@@ -13,7 +13,7 @@ router.post('/add', async function (req, res, next) {
     const { name, email, password } = req.body;
 
     // Kiểm tra xem tài khoản đã tồn tại hay chưa
-    const existingUser = await userModel.findOne({ email: email });
+    const existingUser = await User.findOne({ email: email });
 
     if (existingUser) {
       // Nếu tài khoản đã tồn tại
@@ -25,7 +25,7 @@ router.post('/add', async function (req, res, next) {
 
     // Nếu tài khoản chưa tồn tại, tạo tài khoản mới
     const addItem = { name, email, password };
-    await userModel.create(addItem);
+    await User.create(addItem);
 
     res.status(200).json({
       status: true,
