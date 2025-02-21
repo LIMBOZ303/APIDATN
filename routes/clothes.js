@@ -5,21 +5,22 @@ const Clothes = require('../models/clothesModel');
 //thêm áo
 router.post('/add', async (req, res) => {
     const { name, price, category, gender, Silhouette, fabrics, color, neckline, sleeve, imageUrl } = req.body;
-    const clothes = new Clothes({ name, price, category, gender, Silhouette, fabrics, color, neckline, sleeve, imageUrl  });
+    const clothes = new Clothes({ name, price, category, gender, Silhouette, fabrics, color, neckline, sleeve, imageUrl });
     try {
         await clothes.save();
-        res.status(201).send("Thêm áo thành công");
+        res.status(201).json({ status: true, message: "Thêm áo thành công", data: clothes });
     } catch (error) {
         console.log(error);
-        res.status(500).send("Lỗi khi thêm áo");
+        res.status(500).json({ status: false, message: "Lỗi khi thêm áo" });
     }
 });
+
 
 //lấy tất cả áo
 router.get('/all', async (req, res) => {
     try {
         const clothesEntries = await Clothes.find();
-        res.status(200).json({ status: true, data: clothesEntries });
+        res.status(200).json({ status: true, message:"lấy danh sách thành công", data: clothesEntries });
     } catch (error) {
         console.log(error);
         res.status(500).json({ status: false, message: "Thất Bại" });
@@ -28,10 +29,10 @@ router.get('/all', async (req, res) => {
 
 //lấy áo theo id
 router.get('/get/:id', async (req, res) => {
-    
+
     try {
         var list = await Clothes.find({ _id: req.params.id });
-        res.status(200).json({ status: true, data: list });
+        res.status(200).json({ status: true, message: "thành công", data: list });
 
     } catch (err) {
         res.status(400).json({ status: false, message: "Thất Bại" });
@@ -42,7 +43,7 @@ router.get('/get/:id', async (req, res) => {
 router.put('/update/:id', async (req, res) => {
     const { name, price, category, gender, Silhouette, fabrics, color, neckline, sleeve, imageUrl } = req.body;
     try {
-        const updateclothes = await Clothes.findByIdAndUpdate(req.params.id, { name, price, category, gender, Silhouette, fabrics, color, neckline, sleeve, imageUrl  }, { new: true });
+        const updateclothes = await Clothes.findByIdAndUpdate(req.params.id, { name, price, category, gender, Silhouette, fabrics, color, neckline, sleeve, imageUrl }, { new: true });
         if (!updateclothes) {
             return res.status(404).send("Không tìm thấy áo");
         }
