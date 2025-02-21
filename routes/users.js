@@ -8,6 +8,39 @@ router.get('/', function(req, res, next) {
   res.send('respond with a resource');
 });
 
+router.post('/add', async function (req, res, next) {
+  try {
+    const { name, email, password } = req.body;
+
+    // Kiểm tra xem tài khoản đã tồn tại hay chưa
+    const existingUser = await userModel.findOne({ email: email });
+
+    if (existingUser) {
+      // Nếu tài khoản đã tồn tại
+      return res.status(400).json({
+        status: false,
+        message: "Email đã tồn tại. Vui lòng sử dụng email khác."
+      });
+    }
+
+    // Nếu tài khoản chưa tồn tại, tạo tài khoản mới
+    const addItem = { name, email, password };
+    await userModel.create(addItem);
+
+    res.status(200).json({
+      status: true,
+      message: "Thêm tài khoản thành công"
+    });
+
+  } catch (e) {
+    console.error("Lỗi thêm tài khoản:", e);
+    res.status(400).json({
+      status: false,
+      message: "Thất bại"
+    });
+  }
+});
+
 router.get('/all', async (req, res) => {
   try {
      const users = await User.find(); // Lấy tất cả người dùng từ database
