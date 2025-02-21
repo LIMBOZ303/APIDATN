@@ -66,19 +66,32 @@ router.post('/register', async (req, res) => {
 
 //login user
 //http://localhost:2025/users/login
-router.post('/login', async (req, res) => {
-  const { email, password } = req.body;
+router.post("/login", async function (req, res) {
   try {
-    const user = await User.findOne({ email });
+    const { email, password } = req.body;
+    const user = await userModel.findOne({ email });
     if (!user) {
-      return res.status(401).send('Invalid email or password');
+      return res
+        .status(400)
+        .json({ status: false, message: "Sai email hoặc mật khẩu" });
     }
-    if (user.password !== password) {
-      return res.status(401).send('Invalid email or password');
+
+    // Kiểm tra mật khẩu
+    if (password !== user.password) {
+      return res
+        .status(400)
+        .json({ status: false, message: "Sai email hoặc mật khẩu" });
     }
-    res.status(200).send('Login successful');
-  } catch (error) {
-    res.status(500).send('Error logging in');
+
+    res.status(200).json({
+      status: true,
+      message: "Đăng nhập thành công",
+      user,
+    });
+  } catch (e) {
+    res
+      .status(400)
+      .json({ status: false, message: "Thất bại", error: e.message });
   }
 });
 
