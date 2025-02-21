@@ -28,15 +28,13 @@ router.get('/all', async (req, res) => {
 
 //lấy áo theo id
 router.get('/get/:id', async (req, res) => {
+    
     try {
-        const clothesEntry = await Clothes.findById(req.params.id);
-        if (!clothesEntry) {
-            return res.status(404).send("Không tìm thấy áo");
-        }
-        res.status(200).send(clothesEntry);
-    } catch (error) {
-        console.log(error);
-        res.status(500).send("Lỗi khi lấy áo theo id");
+        var list = await Clothes.find({ _id: req.params.id });
+        res.status(200).json({ status: true, data: list });
+
+    } catch (err) {
+        res.status(400).json({ status: false, message: "Thất Bại" });
     }
 });
 
