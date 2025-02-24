@@ -3,7 +3,7 @@ const mongoose = require('mongoose');
 const planSchema = new mongoose.Schema({
     clothesId:{type: mongoose.Schema.Types.ObjectId, ref: 'Clothes',required: true},
     invitationId:{type: mongoose.Schema.Types.ObjectId, ref: 'Invitation',required: true},
-    hallId:{type: mongoose.Schema.Types.ObjectId, ref: 'Hall',required: true},
+    lobbyId:{type: mongoose.Schema.Types.ObjectId, ref: 'Lobby',required: true},
     cateringId:{type: mongoose.Schema.Types.ObjectId, ref: 'Catering',required: true},
     flowerId: {type: mongoose.Schema.Types.ObjectId, ref: 'Flower',required: true},
     totalPrice:{type: Number,required: true},

@@ -8,23 +8,21 @@ router.post('/add', async (req, res) => {
     const invitation = new Invitation({ name, style, price, status, description, imageUrl });
     try {
         await invitation.save();
-        return res.status(201).json({message: "Thêm lời mời thành công",
-            data: invitation
-        });
+        return res.status(201).json({ status: true, message: "Thêm lời mời thành công", data: invitation });
     } catch (error) {
         console.log(error);
-        return res.status(500).json({error: "Lỗi khi thêm lời mời"});
+        return res.status(500).json({ status: false, message: "Lỗi khi thêm lời mời" });
     }
 });
 
 //lấy tất cả lời mời
-router.get('/getall', async (req, res) => {
+router.get('/all', async (req, res) => {
     try {
         const invitations = await Invitation.find();
-        return res.status(200).json({message: "Lấy tất cả lời mời thành công"});
+        return res.status(200).json({status:true, message: "Lấy tất cả lời mời thành công", data: invitations });
     } catch (error) {
         console.log(error);
-        return res.status(500).json({error: "Lỗi khi lấy tất cả lời mời"});
+        return res.status(500).json({status:false, message: "Lỗi khi lấy tất cả lời mời" });
     }
 });
 
@@ -33,12 +31,12 @@ router.get('/get/:id', async (req, res) => {
     try {
         const invitation = await Invitation.findById(req.params.id);
         if (!invitation) {
-            return res.status(404).json({error: "Không tìm thấy lời mời"});
+            return res.status(404).json({status:false, message: "Không tìm thấy lời mời" });
         }
-        return res.status(200).json({message: "Lấy lời mời thành công",});
+        return res.status(200).json({status:true, message: "Lấy lời mời thành công", data: invitation });
     } catch (error) {
         console.log(error);
-        return res.status(500).json({error: "Lỗi khi lấy lời mời theo id"});
+        return res.status(500).json({status:false, message: "Lỗi khi lấy lời mời theo id" });
     }
 });
 
@@ -46,14 +44,14 @@ router.get('/get/:id', async (req, res) => {
 router.put('/update/:id', async (req, res) => {
     const { name, style, price, status, description, imageUrl } = req.body;
     try {
-        const updateinvitation = await Invitation.findByIdAndUpdate(req.params.id, { name, style, price, status, description, imageUrl }, {new: true});
+        const updateinvitation = await Invitation.findByIdAndUpdate(req.params.id, { name, style, price, status, description, imageUrl }, { new: true });
         if (!updateinvitation) {
             return res.status(404).json(updateinvitation);
         }
-        return res.status(200).json({message: "Cập nhật lời mời thành công",});
+        return res.status(200).json({status:true, message: "Cập nhật lời mời thành công", data: updateinvitation });
     } catch (error) {
         console.log(error);
-        return res.status(500).json({error: "Lỗi khi cập nhật lời mời"});
+        return res.status(500).json({status:false, message: "Lỗi khi cập nhật lời mời" });
     }
 });
 
@@ -62,9 +60,9 @@ router.delete('/delete/:id', async (req, res) => {
     try {
         const deleteinvitation = await Invitation.findByIdAndDelete(req.params.id);
         if (!deleteinvitation) {
-            return res.status(404).json({error: "Không tìm thấy lời mời"});
+            return res.status(404).json({status:false, message: "Không tìm thấy lời mời" });
         }
-        return res.status(200).json({message: "Xóa lời mời thành công",});
+        return res.status(200).json({status:true, message: "Xóa lời mời thành công", });
     } catch (error) {
         console.log(error);
     }

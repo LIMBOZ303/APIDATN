@@ -5,8 +5,8 @@ const WeddingHall = require('../models/hallModel');
 
 //thêm hội trường
 router.post('/add', async (req, res) => {
-    const { name, price, soluongkhach, location, sanh, dateevent, imageUrl } = req.body;
-    const weddinghall = new WeddingHall({ name, price, soluongkhach, location, sanh, dateevent, imageUrl });
+    const { name, soluongkhach, location, sanh, dateevent, imageUrl } = req.body;
+    const weddinghall = new WeddingHall({ name, soluongkhach, location, sanh, dateevent, imageUrl });
     try {
         await weddinghall.save();
         return res.status(200).json({ message: "Thêm hội trường thành công", data: weddinghall });
@@ -20,9 +20,9 @@ router.post('/add', async (req, res) => {
 router.get('/all', async (req, res) => {
     try {
         const weddingHalls = await WeddingHall.find();
-        return res.status(200).json(weddingHalls);
+        return res.status(200).json({status: true, data: weddingHalls });
     } catch (error) {
-        return res.status(500).json({ error: 'Error fetching wedding halls' });
+        return res.status(500).json({ status: false, message: "Thất Bại" });
     }
 });
 
@@ -39,12 +39,12 @@ router.get('/:id', async (req, res) => {
 
 // Cập nhật Wedding Hall (PUT)
 router.put('/:id', async (req, res) => {
-    const { name, price, soLuongKhach, location, sanh, dateEvent, imageUrl } = req.body;
+    const { name, soLuongKhach, location, sanh, dateEvent, imageUrl } = req.body;
 
     try {
         const updatedWeddingHall = await WeddingHall.findByIdAndUpdate(
             req.params.id,
-            { name, price, soLuongKhach, location, sanh, dateEvent, imageUrl },
+            { name, soLuongKhach, location, sanh, dateEvent, imageUrl },
             { new: true }
         );
         if (!updatedWeddingHall) return res.status(404).json({ error: 'Wedding hall not found' });
