@@ -4,8 +4,8 @@ const Clothes = require('../models/clothesModel');
 
 //thêm áo
 router.post('/add', async (req, res) => {
-    const { name, price, category, gender, Silhouette, fabrics, color, neckline, sleeve, imageUrl } = req.body;
-    const clothes = new Clothes({ name, price, category, gender, Silhouette, fabrics, color, neckline, sleeve, imageUrl });
+    const { name, price, Category_ClothesId, gender, Silhouette, fabrics, color, neckline, sleeve, imageUrl } = req.body;
+    const clothes = new Clothes({ name, price, Category_ClothesId, gender, Silhouette, fabrics, color, neckline, sleeve, imageUrl });
     try {
         await clothes.save();
         res.status(201).json({ status: true, message: "Thêm áo thành công", data: clothes });
@@ -41,9 +41,9 @@ router.get('/get/:id', async (req, res) => {
 
 //cập nhật áo
 router.put('/update/:id', async (req, res) => {
-    const { name, price, category, gender, Silhouette, fabrics, color, neckline, sleeve, imageUrl } = req.body;
+    const { name, price, Category_ClothesId, gender, Silhouette, fabrics, color, neckline, sleeve, imageUrl } = req.body;
     try {
-        const updateclothes = await Clothes.findByIdAndUpdate(req.params.id, { name, price, category, gender, Silhouette, fabrics, color, neckline, sleeve, imageUrl }, { new: true });
+        const updateclothes = await Clothes.findByIdAndUpdate(req.params.id, { name, price, Category_ClothesId, gender, Silhouette, fabrics, color, neckline, sleeve, imageUrl }, { new: true });
         if (!updateclothes) {
             return res.status(404).send("Không tìm thấy áo");
         }
