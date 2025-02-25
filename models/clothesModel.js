@@ -4,7 +4,7 @@ const clothesSchema = new mongoose.Schema({
     name: { type: String, required: true },
     price: { type: Number, required: true },
     status: { type: String, enum: ['active', 'inactive'], default: 'active' },
-    category: { type: String, required: true },
+    Category_ClothesId:{type: mongoose.Schema.Types.ObjectId, ref: 'Category_ClothesModel',required: true},
     gender: { type: String, enum: ['male', 'female', 'unisex'], required: true },
     Silhouette: { type: String, required: true },
     fabrics: { type: String, required: true },
