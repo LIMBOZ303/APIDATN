@@ -7,7 +7,7 @@ const hallSchema = new mongoose.Schema({
     imageUrl: {type: String},
 }, {timestamps: true});
 
-const Hall = mongoose.model('Hall', hallSchema);
+const Hall = mongoose.model('WeddingHall', hallSchema);
 
 module.exports = Hall;
 
