@@ -2,9 +2,7 @@ const mongoose = require('mongoose');
 
 const hallSchema = new mongoose.Schema({
     name: {type: String, required: true},
-    soluongkhach: {type: Number, required: true},
-    location: {type: String},
-    dateevent: {type: Date, required: false},
+    location: {type: String, required: true},
     sanh: {type: Number},
     imageUrl: {type: String},
 }, {timestamps: true});

@@ -5,8 +5,8 @@ const Lobby = require('../models/lobbyModel');
 
 //thêm lobb
 router.post('/add', async (req, res) => {
-    const { name, price, imageUrl, weddingHallId } = req.body;
-    const lobby = new Lobby({ name, price, imageUrl, weddingHallId });
+    const { name, price, SoLuongKhach, imageUrl, weddingHallId } = req.body;
+    const lobby = new Lobby({ name, price, SoLuongKhach, imageUrl, weddingHallId });
     try {
         await lobby.save();
         return res.status(200).json({ message: "Thêm lobb thành công", data: lobby });
@@ -16,9 +16,9 @@ router.post('/add', async (req, res) => {
 });
 
 //lấy tất cả lobb
-router.get('/getall', async (req, res) => {
+router.get('/all', async (req, res) => {
     try {
-        const lobbies = await Lobby.find().populate('weddingHallId');
+        const lobbies = await Lobby.find().populate('weddingHallId','name');
         return res.status(200).json(lobbies);
     } catch (error) {
         return res.status(500).json({ error: "Lỗi khi lấy tất cả lobb" });
@@ -40,9 +40,9 @@ router.get('/:id', async (req, res) => {
 
 //cập nhật lobb
 router.put('/update/:id', async (req, res) => {
-    const { name, price, imageUrl, weddingHallId } = req.body;
+    const { name, price, SoLuongKhach, imageUrl, weddingHallId } = req.body;
     try {
-        const lobby = await Lobby.findByIdAndUpdate(req.params.id, { name, price, imageUrl, weddingHallId }, { new: true });
+        const lobby = await Lobby.findByIdAndUpdate(req.params.id, { name, price, SoLuongKhach, imageUrl, weddingHallId }, { new: true });
         if (!lobby) {
             return res.status(404).json({ error: "Lobby không tồn tại" });
         }
@@ -84,10 +84,10 @@ router.post('/add', async (req, res) => {
 router.get('/all', async (req, res) => {
     try {
         const lobbyEntries = await Lobby.find();
-        res.status(200).json({status: true, message:"lấy thành công danh sách", data:lobbyEntries});
+        res.status(200).json({ status: true, message: "lấy thành công danh sách", data: lobbyEntries });
     } catch (error) {
         console.log(error);
-        res.status(500).json({status: false, message: "Lỗi khi lấy tất cả áo" });
+        res.status(500).json({ status: false, message: "Lỗi khi lấy tất cả áo" });
     }
 });
 
@@ -101,10 +101,10 @@ router.put('/:id', async (req, res) => {
             { hallId, name, price, description, imageUrl },
             { new: true }
         );
-        if (!updatedLobby) return res.status(404).json({status: false, message: 'Lobby not found' });
-        return res.status(200).json({status: true, message:"update thành công" ,data:updatedLobby});
+        if (!updatedLobby) return res.status(404).json({ status: false, message: 'Lobby not found' });
+        return res.status(200).json({ status: true, message: "update thành công", data: updatedLobby });
     } catch (error) {
-        
+
         return res.status(400).json({ status: false, message: 'Error updating Lobby' });
     }
 });
