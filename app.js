@@ -36,7 +36,8 @@ app.use('/hall',hallRouter );
 app.use('/catering', cateringRouter);
 app.use('/flower', flowerRouter);
 
-mongoose.connect('mongodb://localhost:27017/userDB')
+// mongoose.connect('mongodb://localhost:27017/userDB')
+mongoose.connect('mongodb+srv://tran07hieu:beVLTEzrT7C0eCzZ@cluster0.tnems.mongodb.net/userDB')
     .then(() => {
         console.log('Connected to MongoDB');
     })
