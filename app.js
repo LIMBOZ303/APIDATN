@@ -14,6 +14,7 @@ var hallRouter = require('./routes/weddinghall');
 var cateringRouter = require('./routes/catering');
 var flowerRouter = require('./routes/flower');
 var CateClothesRouter = require('./routes/category_clothes')
+var lobbyRouter = require('./routes/lobby')
 
 var app = express();
 app.use(express.json());//xử lý json
@@ -38,6 +39,7 @@ app.use('/hall',hallRouter );
 app.use('/catering', cateringRouter);
 app.use('/flower', flowerRouter);
 app.use('/cate_clothes', CateClothesRouter);
+app.use('/lobby', lobbyRouter);
 
 // mongoose.connect('mongodb://localhost:27017/userDB')
 mongoose.connect('mongodb+srv://tran07hieu:beVLTEzrT7C0eCzZ@cluster0.tnems.mongodb.net/userDB')
