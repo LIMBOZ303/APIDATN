@@ -19,7 +19,7 @@ router.post('/add', async (req, res) => {
 //lấy tất cả áo
 router.get('/all', async (req, res) => {
     try {
-        const clothesEntries = await Clothes.find();
+        const clothesEntries = await Clothes.find().populate('Category_ClothesId', 'name');
         res.status(200).json({ status: true, message:"lấy danh sách thành công", data: clothesEntries });
     } catch (error) {
         console.log(error);
