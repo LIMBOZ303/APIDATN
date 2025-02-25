@@ -9,19 +9,19 @@ router.post('/add', async (req, res) => {
     const lobby = new Lobby({ name, price, SoLuongKhach, imageUrl, weddingHallId });
     try {
         await lobby.save();
-        return res.status(200).json({ message: "Thêm lobb thành công", data: lobby });
+        return res.status(200).json({ status: true, message: "Thêm lobb thành công", data: lobby });
     } catch (error) {
-        return res.status(500).json({ error: "Lỗi khi thêm lobb" });
+        return res.status(500).json({ status: false, message: "Lỗi khi thêm lobb" });
     }
 });
 
 //lấy tất cả lobb
 router.get('/all', async (req, res) => {
     try {
-        const lobbies = await Lobby.find().populate('weddingHallId','name');
-        return res.status(200).json(lobbies);
+        const lobbies = await Lobby.find().populate('weddingHallId', 'name');
+        return res.status(200).json({ status: true, message: "done", data: lobbies });
     } catch (error) {
-        return res.status(500).json({ error: "Lỗi khi lấy tất cả lobb" });
+        return res.status(500).json({ status: false, message: "false", });
     }
 });
 
@@ -32,9 +32,9 @@ router.get('/:id', async (req, res) => {
         if (!lobby) {
             return res.status(404).json({ error: "Lobby không tồn tại" });
         }
-        return res.status(200).json(lobby);
+        return res.status(200).json({status: true, message: "done", data: lobby});
     } catch (error) {
-        return res.status(500).json({ error: "Lỗi khi lấy lobb theo id" });
+        return res.status(500).json({status: false, message: "Lỗi khi lấy lobb theo id" });
     }
 });
 
@@ -46,10 +46,10 @@ router.put('/update/:id', async (req, res) => {
         if (!lobby) {
             return res.status(404).json({ error: "Lobby không tồn tại" });
         }
-        return res.status(200).json({ message: "Cập nhật lobb thành công", data: lobby });
+        return res.status(200).json({status: true, message: "Cập nhật lobb thành công", data: lobby });
     } catch (error) {
         console.log(error);
-        return res.status(500).json({ error: "Lỗi khi cập nhật lobb" });
+        return res.status(500).json({status: false, message: "Lỗi khi cập nhật lobb" });
     }
 });
 
@@ -60,9 +60,9 @@ router.delete('/:id', async (req, res) => {
         if (!lobby) {
             return res.status(404).json({ error: "Lobby không tồn tại" });
         }
-        return res.status(200).json({ message: "Xóa lobb thành công", data: lobby });
+        return res.status(200).json({status: true, message: "Xóa lobb thành công", data: lobby });
     } catch (error) {
-        return res.status(500).json({ error: "Lỗi khi xóa lobb" });
+        return res.status(500).json({status: false, message: "Lỗi khi xóa lobb" });
     }
 });
 

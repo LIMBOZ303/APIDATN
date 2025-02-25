@@ -47,10 +47,10 @@ router.put('/update/:id', async (req, res) => {
         if (!updateclothes) {
             return res.status(404).send("Không tìm thấy áo");
         }
-        res.status(200).send("Cập nhật áo thành công");
+        res.status(200).json({status: true, message:'done', data: updateclothes });
     } catch (error) {
-        console.log(error);
-        res.status(500).send("Lỗi khi cập nhật áo");
+        console.log(error); 
+        res.status(500).json({status: false, message:'false' });
     }
 });
 
@@ -61,10 +61,10 @@ router.delete('/delete/:id', async (req, res) => {
         if (!deleteclothes) {
             return res.status(404).send("Không tìm thấy áo");
         }
-        res.status(200).send("Xóa áo thành công");
+        res.status(200).json({status: true, message:'done', data: deleteclothes });
     } catch (error) {
         console.log(error);
-        res.status(500).send("Lỗi khi xóa áo");
+        res.status(500).json({status: false, message:'false'});
     }
 });
 
