@@ -16,9 +16,9 @@ router.post('/add', async (req, res) => {
 });
 
 //lấy danh sách tất cả dịch vụ catering
-router.get('/getall', async (req, res) => {
+router.get('/all', async (req, res) => {
     try {
-        const catering = await Catering.find();
+        const catering = await Catering.find().populate('cate_cateringId', 'name');
         return res.status(200).json({status:true, message: "Lấy danh sách tất cả dịch vụ catering thành công", data: catering });
     } catch (error) {
         console.log(error);
