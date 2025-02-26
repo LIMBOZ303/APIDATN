@@ -3,8 +3,11 @@ const mongoose = require('mongoose');
 const cateringSchema = new mongoose.Schema({
     name: { type: String, required: true },
     price: { type: Number, required: true },
-    type: { type: String, required: true },
-    category: { type: String, required: true },
+    cate_cateringId: { 
+        type: mongoose.Schema.Types.ObjectId, 
+        ref: 'cate_catering', 
+        required: true 
+    },
     description: { type: String },
     imageUrl: { type: String },
 }, { timestamps: true });

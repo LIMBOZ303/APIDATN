@@ -4,8 +4,8 @@ const Catering = require('../models/catering');
 
 //tạo dịch vụ catering
 router.post('/add', async (req, res) => {
-    const { name, price, type, category, description, imageUrl } = req.body;
-    const catering = new Catering({ name, price, type, category, description, imageUrl });
+    const { name, price, cate_cateringId, description, imageUrl } = req.body;
+    const catering = new Catering({ name, price, cate_cateringId, description, imageUrl });
     try {
         await catering.save();
         return res.status(200).json({status: true, message: "Thêm dịch vụ catering thành công", data: catering });
@@ -42,9 +42,9 @@ router.get('/getbyid/:id', async (req, res) => {
 
 //cập nhật dịch vụ catering
 router.put('/update/:id', async (req, res) => {
-    const { name, price, type, category, description, imageUrl } = req.body;
+    const { name, price, cate_cateringId, description, imageUrl } = req.body;
     try {
-        const catering = await Catering.findByIdAndUpdate(req.params.id, { name, price, type, category, description, imageUrl }, { new: true });
+        const catering = await Catering.findByIdAndUpdate(req.params.id, { name, price, cate_cateringId, description, imageUrl }, { new: true });
         if (!catering) {
             return res.status(404).json({status: false, message: "Không tìm thấy dịch vụ catering" });
         }
