@@ -4,8 +4,8 @@ const Invitation = require('../models/invitationModel');
 
 //tạo lời mời
 router.post('/add', async (req, res) => {
-    const { name, style, price, status, description, imageUrl } = req.body;
-    const invitation = new Invitation({ name, style, price, status, description, imageUrl });
+    const { name, Style_cardId, price, status, description, imageUrl } = req.body;
+    const invitation = new Invitation({ name, Style_cardId, price, status, description, imageUrl });
     try {
         await invitation.save();
         return res.status(201).json({ status: true, message: "Thêm lời mời thành công", data: invitation });
@@ -42,9 +42,9 @@ router.get('/get/:id', async (req, res) => {
 
 //cập nhật lời mời
 router.put('/update/:id', async (req, res) => {
-    const { name, style, price, status, description, imageUrl } = req.body;
+    const { name, Style_cardId, price, status, description, imageUrl } = req.body;
     try {
-        const updateinvitation = await Invitation.findByIdAndUpdate(req.params.id, { name, style, price, status, description, imageUrl }, { new: true });
+        const updateinvitation = await Invitation.findByIdAndUpdate(req.params.id, { name, Style_cardId, price, status, description, imageUrl }, { new: true });
         if (!updateinvitation) {
             return res.status(404).json(updateinvitation);
         }
