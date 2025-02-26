@@ -2,7 +2,11 @@ const mongoose = require('mongoose');
 
 const invitationSchema = new mongoose.Schema({
     name: {type: String, required: true},
-    style: {type: String},
+    Style_cardId: { 
+        type: mongoose.Schema.Types.ObjectId, 
+        ref: 'Style_card', 
+        required: true 
+    },
     price: {type: Number, required: true},
     status: {type: String, enum: ['active', 'inactive'], default: 'active'},
     description: {type: String},
