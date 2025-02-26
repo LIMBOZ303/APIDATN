@@ -81,6 +81,17 @@ router.get("/by-hall/:weddingHallId", async (req, res) => {
     }
 });
 
+router.get('/by-hall/:weddingHallId', async (req, res) => {
+
+    try {
+        var list = await Clothes.find({ _id: req.params.id });
+        res.status(200).json({ status: true, message: "thành công", data: list });
+
+    } catch (err) {
+        res.status(400).json({ status: false, message: "Thất Bại" });
+    }
+});
+
 module.exports = router;
 //thêm
 router.post('/add', async (req, res) => {
