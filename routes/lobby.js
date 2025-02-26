@@ -65,6 +65,21 @@ router.delete('/:id', async (req, res) => {
         return res.status(500).json({status: false, message: "Lỗi khi xóa lobb" });
     }
 });
+// Lấy danh sách lobbies theo weddingHallId
+router.get("/by-hall/:weddingHallId", async (req, res) => {
+    try {
+        const { weddingHallId } = req.params;
+
+        if (!weddingHallId) {
+            return res.status(400).json({ message: "Thiếu weddingHallId" });
+        }
+
+        const lobbies = await Lobby.find({ weddingHallId });
+        res.status(200).json(lobbies);
+    } catch (error) {
+        res.status(500).json({ message: "Lỗi server", error });
+    }
+});
 
 module.exports = router;
 //thêm
