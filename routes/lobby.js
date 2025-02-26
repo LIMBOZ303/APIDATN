@@ -66,25 +66,25 @@ router.delete('/:id', async (req, res) => {
     }
 });
 // Lấy danh sách lobbies theo weddingHallId
-router.get("/by-hall/:weddingHallId", async (req, res) => {
-    try {
-        const { weddingHallId } = req.params;
+// router.get("/by-hall/:weddingHallId", async (req, res) => {
+//     try {
+//         const { weddingHallId } = req.params;
 
-        if (!weddingHallId) {
-            return res.status(400).json({ message: "Thiếu weddingHallId" });
-        }
+//         if (!weddingHallId) {
+//             return res.status(400).json({ message: "Thiếu weddingHallId" });
+//         }
 
-        const lobbies = await Lobby.find({ weddingHallId });
-        res.status(200).json(lobbies);
-    } catch (error) {
-        res.status(500).json({ message: "Lỗi server", error });
-    }
-});
+//         const lobbies = await Lobby.find({ weddingHallId });
+//         res.status(200).json(lobbies);
+//     } catch (error) {
+//         res.status(500).json({ message: "Lỗi server", error });
+//     }
+// });
 
 router.get('/by-hall/:weddingHallId', async (req, res) => {
 
     try {
-        var list = await Clothes.find({ _id: req.params.id });
+        var list = await Lobby.find({ _id: req.params.id });
         res.status(200).json({ status: true, message: "thành công ", data: list });
 
     } catch (err) {
