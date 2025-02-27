@@ -10,6 +10,7 @@ const planSchema = new mongoose.Schema({
     status:{type: String,enum:['active','inactive'],default:'active'},
     planprice:{type: Number,required: true},
     plansoluongkhach:{type: Number,required: true},
+    plandateevent:{type: Date,required: true},
     planlocation:{type: String,required: true},
 },{timestamps: true});
 
