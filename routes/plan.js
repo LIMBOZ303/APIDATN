@@ -1,6 +1,72 @@
 const express = require('express');
 const router = express.Router();
 const Plan = require('../models/planModel');
+const Clothes = require('../models/clothesModel');
+const Invitation = require('../models/invitationModel');
+const Lobby = require('../models/lobbyModel');
+const Catering = require('../models/catering');
+const Flower = require('../models/flowerModel');
+
+router.post('/survey-plan', async (req, res) => {
+    try {
+        const { budget, location, guestCount } = req.body;
+        if (!budget || !location || !guestCount) {
+            return res.status(400).json({ message: 'Thiếu thông tin bắt buộc!' });
+        }
+
+        // Tìm các mục với giá cả phù hợp
+        const clothes = await Clothes.findOne().sort({ price: 1 });
+        const invitation = await Invitation.findOne().sort({ price: 1 });
+        const lobby = await Lobby.findOne({ SoLuongKhach: { $gte: guestCount } }).sort({ price: 1 });
+        const catering = await Catering.findOne().sort({ price: 1 });
+        const flower = await Flower.findOne().sort({ price: 1 });
+
+        if (!clothes || !invitation || !lobby || !catering || !flower) {
+            return res.status(404).json({ message: 'Không tìm thấy các mục phù hợp!' });
+        }
+
+        // Tính tổng giá tiền
+        const totalPrice = clothes.price + invitation.price + lobby.price + catering.price + flower.price;
+        if (totalPrice > budget) {
+            return res.status(400).json({ message: 'Ngân sách không đủ để tạo Plan!' });
+        }
+
+        // Tạo kế hoạch mới
+        const newPlan = new Plan({
+            clothesId: clothes._id,
+            invitationId: invitation._id,
+            lobbyId: lobby._id,
+            cateringId: catering._id,
+            flowerId: flower._id,
+            totalPrice,
+            planprice: totalPrice,
+            plansoluongkhach: guestCount,
+            planlocation: location,
+        });
+        await newPlan.save();
+
+        res.status(201).json({ message: 'Tạo Plan thành công!', plan: newPlan });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Lỗi máy chủ!', error: error.message });
+    }
+});
+
+router.get('/plans', async (req, res) => {
+    try {
+        const plans = await Plan.find()
+            .populate('clothesId')
+            .populate('invitationId')
+            .populate('lobbyId')
+            .populate('cateringId')
+            .populate('flowerId')
+            .sort({ createdAt: -1 });
+
+        res.status(200).json(plans);
+    } catch (error) {
+        res.status(500).json({ message: 'Lỗi máy chủ!', error: error.message });
+    }
+});
 
 //tạo plan
 router.post('/create', async (req, res) => {
