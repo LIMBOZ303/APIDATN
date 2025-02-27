@@ -1,27 +1,26 @@
 const express = require('express');
 const mongoose = require('mongoose');
-const Plan = require('../models/planModel'); // Đảm bảo đường dẫn tới model Plan đúng
+const PlanClothes = require('../models/plan-clothesModel'); // Đảm bảo đường dẫn tới model Plan_Clothes đúng
 
 const router = express.Router();
-const Plan = require('../models/planModel');
 
-//tạo plan
-router.post('/create', async (req, res) => {
-    const { clothesId, invitationId, hallId, cateringId, flowerId, totalPrice, planprice, plansoluongkhach, planlocation } = req.body;
-    const plan = new Plan({
-        clothesId,
-        invitationId,
-        hallId,
-        cateringId,
-        flowerId,
-        totalPrice,
-        planprice,
-        plansoluongkhach,
-        planlocation
-    });
+// Create (POST) - Thêm mới một Plan_Clothes
+router.post('/add', async (req, res) => {
     try {
-        await plan.save();
-        res.status(201).json({ status: true, message: 'tạo kế hoạch thành công', data: plan });
+        const { PlanId, ClothesId } = req.body;
+
+        const newPlanClothes = new PlanClothes({
+            PlanId,
+            ClothesId
+        });
+
+        await newPlanClothes.save();
+
+        return res.status(201).json({
+            status: true,
+            message: "Tạo mới thành công",
+            data: newPlanClothes
+        });
     } catch (error) {
         return res.status(500).json({
             status: false,
@@ -31,15 +30,15 @@ router.post('/create', async (req, res) => {
     }
 });
 
-// Read (GET) - Lấy tất cả Plan
+// Read (GET) - Lấy tất cả Plan_Clothes
 router.get('/all', async (req, res) => {
     try {
-        const plans = await Plan.find().populate('invitationId lobbyId cateringId flowerId UserId');
+        const planClothes = await PlanClothes.find().populate('PlanId ClothesId');
 
         return res.status(200).json({
             status: true,
             message: "Lấy danh sách thành công",
-            data: plans
+            data: planClothes
         });
     } catch (error) {
         return res.status(500).json({
@@ -50,15 +49,15 @@ router.get('/all', async (req, res) => {
     }
 });
 
-// Read (GET) - Lấy thông tin Plan theo ID
+// Read (GET) - Lấy thông tin Plan_Clothes theo ID
 router.get('/:id', async (req, res) => {
     try {
-        const plan = await Plan.findById(req.params.id).populate('invitationId lobbyId cateringId flowerId UserId');
+        const planClothes = await PlanClothes.findById(req.params.id).populate('PlanId ClothesId');
 
-        if (!plan) {
+        if (!planClothes) {
             return res.status(404).json({
                 status: false,
-                message: "Không tìm thấy Plan",
+                message: "Không tìm thấy Plan_Clothes",
                 data: null
             });
         }
@@ -66,7 +65,7 @@ router.get('/:id', async (req, res) => {
         return res.status(200).json({
             status: true,
             message: "Lấy thông tin thành công",
-            data: plan
+            data: planClothes
         });
     } catch (error) {
         return res.status(500).json({
@@ -77,28 +76,20 @@ router.get('/:id', async (req, res) => {
     }
 });
 
-// Update (PUT) - Cập nhật thông tin Plan theo ID
+// Update (PUT) - Cập nhật thông tin Plan_Clothes theo ID
 router.put('/:id', async (req, res) => {
     try {
-        const { invitationId, lobbyId, cateringId, flowerId, UserId, totalPrice, planprice, plansoluongkhach, planlocation, status } = req.body;
+        const { PlanId, ClothesId } = req.body;
 
-        const updatedPlan = await Plan.findByIdAndUpdate(req.params.id, {
-            invitationId,
-            lobbyId,
-            cateringId,
-            flowerId,
-            UserId,
-            totalPrice,
-            planprice,
-            plansoluongkhach,
-            planlocation,
-            status
+        const updatedPlanClothes = await PlanClothes.findByIdAndUpdate(req.params.id, {
+            PlanId,
+            ClothesId
         }, { new: true });
 
-        if (!updatedPlan) {
+        if (!updatedPlanClothes) {
             return res.status(404).json({
                 status: false,
-                message: "Không tìm thấy Plan để cập nhật",
+                message: "Không tìm thấy Plan_Clothes để cập nhật",
                 data: null
             });
         }
@@ -106,7 +97,7 @@ router.put('/:id', async (req, res) => {
         return res.status(200).json({
             status: true,
             message: "Cập nhật thành công",
-            data: updatedPlan
+            data: updatedPlanClothes
         });
     } catch (error) {
         return res.status(500).json({
@@ -117,15 +108,15 @@ router.put('/:id', async (req, res) => {
     }
 });
 
-// Delete (DELETE) - Xóa Plan theo ID
+// Delete (DELETE) - Xóa một Plan_Clothes theo ID
 router.delete('/:id', async (req, res) => {
     try {
-        const deletedPlan = await Plan.findByIdAndDelete(req.params.id);
+        const deletedPlanClothes = await PlanClothes.findByIdAndDelete(req.params.id);
 
-        if (!deletedPlan) {
+        if (!deletedPlanClothes) {
             return res.status(404).json({
                 status: false,
-                message: "Không tìm thấy Plan để xóa",
+                message: "Không tìm thấy Plan_Clothes để xóa",
                 data: null
             });
         }
@@ -133,7 +124,7 @@ router.delete('/:id', async (req, res) => {
         return res.status(200).json({
             status: true,
             message: "Xóa thành công",
-            data: deletedPlan
+            data: deletedPlanClothes
         });
     } catch (error) {
         return res.status(500).json({

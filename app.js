@@ -16,7 +16,9 @@ var flowerRouter = require('./routes/flower');
 var CateClothesRouter = require('./routes/category_clothes')
 var lobbyRouter = require('./routes/lobby')
 var style_cardRouter = require('./routes/Style_card');
-const cate_cateringRouter = require('./routes/cate_catering');
+var cate_cateringRouter = require('./routes/cate_catering');
+var plan_clothesRouter = require('./routes/plan_clothes');
+
 
 
 var app = express();
@@ -45,6 +47,8 @@ app.use('/cate_clothes', CateClothesRouter);
 app.use('/lobby', lobbyRouter);
 app.use('/style_card',style_cardRouter);
 app.use('/cate_catering',cate_cateringRouter);
+app.use('/plan_clothes', plan_clothesRouter)
+
 
 // mongoose.connect('mongodb://localhost:27017/userDB')
 mongoose.connect('mongodb+srv://tran07hieu:beVLTEzrT7C0eCzZ@cluster0.tnems.mongodb.net/userDB')
