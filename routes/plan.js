@@ -15,8 +15,8 @@ const Plan_Clothes = require('../models/plan-clothesModel');
 // API tạo Plan dựa trên tổng tiền, số lượng khách và ngày tổ chức
 router.post('/create-plan', async (req, res) => {
     try {
-        const { budget, guestCount, eventDate, userId } = req.body;
-        if (!budget || !guestCount || !eventDate || !userId) {
+        const { budget, guestCount, eventDate, userId, planLocation } = req.body;
+        if (!budget || !guestCount || !eventDate || !userId || !planLocation) {
             return res.status(400).json({ message: 'Thiếu thông tin bắt buộc!' });
         }
 
@@ -47,6 +47,8 @@ router.post('/create-plan', async (req, res) => {
             totalPrice,
             planprice: totalPrice,
             plansoluongkhach: guestCount,
+            plandateevent: eventDate,
+            planlocation: planLocation,
             status: 'active'
         });
         await newPlan.save();
