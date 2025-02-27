@@ -12,6 +12,28 @@ const Clothes = require('../models/clothesModel');
 const Plan_Clothes = require('../models/plan-clothesModel');
 
 
+
+// API tìm Plan theo userId
+router.get('/plans/:userId', async (req, res) => {
+    try {
+        const { userId } = req.params;
+        if (!mongoose.Types.ObjectId.isValid(userId)) {
+            return res.status(400).json({ message: 'UserId không hợp lệ!' });
+        }
+
+        const plans = await Plan.find({ UserId: userId });
+        if (plans.length === 0) {
+            return res.status(404).json({ message: 'Không tìm thấy kế hoạch nào cho người dùng này!' });
+        }
+
+        res.status(200).json({ plans });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Lỗi máy chủ!', error: error.message });
+    }
+});
+
+
 // API tạo Plan dựa trên tổng tiền, số lượng khách và ngày tổ chức
 router.post('/create-plan', async (req, res) => {
     try {
