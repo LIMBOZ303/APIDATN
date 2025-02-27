@@ -3,25 +3,31 @@ const mongoose = require('mongoose');
 const Plan = require('../models/planModel'); // Đảm bảo đường dẫn tới model Plan đúng
 
 const router = express.Router();
-const Plan = require('../models/planModel');
 
-//tạo plan
-router.post('/create', async (req, res) => {
-    const { clothesId, invitationId, hallId, cateringId, flowerId, totalPrice, planprice, plansoluongkhach, planlocation } = req.body;
-    const plan = new Plan({
-        clothesId,
-        invitationId,
-        hallId,
-        cateringId,
-        flowerId,
-        totalPrice,
-        planprice,
-        plansoluongkhach,
-        planlocation
-    });
+// Create (POST) - Tạo mới một Plan
+router.post('/add', async (req, res) => {
     try {
-        await plan.save();
-        res.status(201).json({ status: true, message: 'tạo kế hoạch thành công', data: plan });
+        const { invitationId, lobbyId, cateringId, flowerId, UserId, totalPrice, planprice, plansoluongkhach, planlocation } = req.body;
+
+        const newPlan = new Plan({
+            invitationId,
+            lobbyId,
+            cateringId,
+            flowerId,
+            UserId,
+            totalPrice,
+            planprice,
+            plansoluongkhach,
+            planlocation
+        });
+
+        await newPlan.save();
+
+        return res.status(201).json({
+            status: true,
+            message: "Tạo mới thành công",
+            data: newPlan
+        });
     } catch (error) {
         return res.status(500).json({
             status: false,
