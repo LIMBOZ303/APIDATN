@@ -18,7 +18,11 @@ var lobbyRouter = require('./routes/lobby')
 var style_cardRouter = require('./routes/Style_card');
 var cate_cateringRouter = require('./routes/cate_catering');
 var plan_clothesRouter = require('./routes/plan_clothes');
-
+var clothes_orderRouter = require('./routes/clothes_order')
+var invitationCard_orderRouter = require('./routes/invitationCard_order')
+var weddingHall_orderRouter = require('./routes/weddingHall_order')
+var catering_orderRouter = require('./routes/catering_order')
+var weddingFlower_orderRouter = require('./routes/weddingFlower_order')
 
 
 var app = express();
@@ -48,6 +52,12 @@ app.use('/lobby', lobbyRouter);
 app.use('/style_card',style_cardRouter);
 app.use('/cate_catering',cate_cateringRouter);
 app.use('/plan_clothes', plan_clothesRouter)
+app.use('/clothes_order', clothes_orderRouter)
+app.use('/invitationCard_order', invitationCard_orderRouter)
+app.use('/weddingHall_order', weddingHall_orderRouter)
+app.use('/catering_order', catering_orderRouter)
+app.use('/weddingFlower_order', weddingFlower_orderRouter)
+
 
 
 // mongoose.connect('mongodb://localhost:27017/userDB')
