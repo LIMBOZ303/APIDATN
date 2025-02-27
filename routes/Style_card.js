@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const Style_card = require('../models/style_card');
+const Style_card = require('../models/style_cardModel');
 
 router.post('/add', async (req, res) => {
     const { name } = req.body;
