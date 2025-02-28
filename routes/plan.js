@@ -158,7 +158,7 @@ router.get('/all', async (req, res) => {
 router.get('/:id', async (req, res) => {
     try {
         const plan = await Plan.findById(req.params.id).populate(
-            'PlanId ClothesId',
+            'ClothesId',
             'invitationId', 'name','Style_cardId name','price','imageUrl',
             'lobbyId', 'name','price','SoLuongKhach','imageUrl', 'weddingHallId location name',
             'cateringId', 'name','price','cate_cateringId name','imageUrl',
