@@ -138,7 +138,7 @@ router.post('/add', async (req, res) => {
 // Read (GET) - Lấy tất cả các Plan
 router.get('/all', async (req, res) => {
     try {
-        const plans = await Plan.find().populate('planId invitationId lobbyId cateringId flowerId UserId');
+        const plans = await Plan.find().populate('invitationId lobbyId cateringId flowerId UserId');
 
         return res.status(200).json({
             status: true,
