@@ -155,16 +155,19 @@ router.get('/all', async (req, res) => {
 });
 
 // Read (GET) - Lấy thông tin Plan theo ID
+
 router.get('/:id', async (req, res) => {
     try {
-        const plan = await Plan.findById(req.params.id).populate(
-            'ClothesId',
-            'invitationId', 'name','Style_cardId name','price','imageUrl',
-            'lobbyId', 'name','price','SoLuongKhach','imageUrl', 'weddingHallId location name',
-            'cateringId', 'name','price','cate_cateringId name','imageUrl',
-            'flowerId','name', 'price','imageUrl','description',
-            'UserId', 'name', 'phone','address',
-            );
+        const plan = await Plan.findById(req.params.id)
+            .populate({
+                path: 'ClothesId', 
+                select: 'name price Category_ClothesId Silhouette fabrics color neckline sleeve imageUrl' // Các trường bạn muốn lấy từ bảng Clothes
+            })
+            .populate('invitationId', 'name price imageUrl') 
+            .populate('lobbyId', 'name price SoLuongKhach imageUrl')
+            .populate('cateringId', 'name price imageUrl')
+            .populate('flowerId', 'name price imageUrl description')
+            .populate('UserId', 'name phone address');
 
         if (!plan) {
             return res.status(404).json({
@@ -187,6 +190,7 @@ router.get('/:id', async (req, res) => {
         });
     }
 });
+
 
 // Update (PUT) - Cập nhật thông tin Plan theo ID
 router.put('/:id', async (req, res) => {
