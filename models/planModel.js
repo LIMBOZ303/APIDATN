@@ -18,7 +18,7 @@ const planSchema = new mongoose.Schema({
 // Middleware để tự động đặt tên theo userId
 planSchema.pre('save', async function (next) {
     if (!this.name) { // Nếu chưa có name
-        const userPlanCount = await mongoose.model('Plan').countDocuments({ userId: this.userId }); // Đếm số Plan của user
+        const userPlanCount = await mongoose.model('Plan').countDocuments({ UserId: this.UserId }); // Đếm số Plan của user
         this.name = `Plan số ${userPlanCount + 1}`; // Tạo tên theo thứ tự riêng của user
     }
     next();
