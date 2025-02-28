@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 
 const planSchema = new mongoose.Schema({
+    name: { type: String, required: true }, // Tên kế hoạch
     invitationId:{type: mongoose.Schema.Types.ObjectId, ref: 'Invitation',required: true},
     lobbyId:{type: mongoose.Schema.Types.ObjectId, ref: 'Lobby',required: true},
     cateringId:{type: mongoose.Schema.Types.ObjectId, ref: 'Catering',required: true},
@@ -13,6 +14,15 @@ const planSchema = new mongoose.Schema({
     plandateevent:{type: Date,required: true},
     planlocation:{type: String,required: true},
 },{timestamps: true});
+
+// Middleware để tự động đặt tên theo userId
+planSchema.pre('save', async function (next) {
+    if (!this.name) { // Nếu chưa có name
+        const userPlanCount = await mongoose.model('Plan').countDocuments({ userId: this.userId }); // Đếm số Plan của user
+        this.name = `Plan số ${userPlanCount + 1}`; // Tạo tên theo thứ tự riêng của user
+    }
+    next();
+});
 
 const Plan = mongoose.model('Plan', planSchema);
 
