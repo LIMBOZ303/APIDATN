@@ -157,7 +157,13 @@ router.get('/all', async (req, res) => {
 // Read (GET) - Lấy thông tin Plan theo ID
 router.get('/:id', async (req, res) => {
     try {
-        const plan = await Plan.findById(req.params.id).populate('invitationId lobbyId cateringId flowerId UserId');
+        const plan = await Plan.findById(req.params.id).populate(
+            'invitationId', 'name','Style_cardId name','price','imageUrl',
+            'lobbyId', 'name','price','SoLuongKhach','imageUrl', 'weddingHallId location name',
+            'cateringId', 'name','price','cate_cateringId name','imageUrl',
+            'flowerId','name', 'price','imageUrl','description',
+            'UserId', 'name', 'phone','address'
+            );
 
         if (!plan) {
             return res.status(404).json({
