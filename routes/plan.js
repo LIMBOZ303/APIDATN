@@ -162,7 +162,8 @@ router.get('/:id', async (req, res) => {
             'lobbyId', 'name','price','SoLuongKhach','imageUrl', 'weddingHallId location name',
             'cateringId', 'name','price','cate_cateringId name','imageUrl',
             'flowerId','name', 'price','imageUrl','description',
-            'UserId', 'name', 'phone','address'
+            'UserId', 'name', 'phone','address',
+            'ClothesId', 'name','price', 'Category_ClothesId name','Silhouette','fabrics','color','neckline','sleeve','imageUrl'
             );
 
         if (!plan) {
