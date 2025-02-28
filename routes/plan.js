@@ -158,11 +158,8 @@ router.get('/all', async (req, res) => {
 
 router.get('/:id', async (req, res) => {
     try {
+        // Tìm kế hoạch theo ID
         const plan = await Plan.findById(req.params.id)
-            .populate({
-                path: 'ClothesId', 
-                select: 'name price Category_ClothesId Silhouette fabrics color neckline sleeve imageUrl' // Các trường bạn muốn lấy từ bảng Clothes
-            })
             .populate('invitationId', 'name price imageUrl') 
             .populate('lobbyId', 'name price SoLuongKhach imageUrl')
             .populate('cateringId', 'name price imageUrl')
@@ -175,6 +172,13 @@ router.get('/:id', async (req, res) => {
                 message: "Không tìm thấy kế hoạch",
                 data: null
             });
+        }
+
+        // Lấy thông tin Clothes thông qua bảng Plan_Clothes
+        const planClothes = await Plan_Clothes.findOne({ PlanId: plan._id }).populate('ClothesId', 'name price imageUrl description');
+
+        if (planClothes) {
+            plan.clothes = planClothes.ClothesId;  
         }
 
         return res.status(200).json({
@@ -190,6 +194,7 @@ router.get('/:id', async (req, res) => {
         });
     }
 });
+
 
 
 // Update (PUT) - Cập nhật thông tin Plan theo ID
