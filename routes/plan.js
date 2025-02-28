@@ -138,7 +138,7 @@ router.post('/add', async (req, res) => {
 // Read (GET) - Lấy tất cả các Plan
 router.get('/all', async (req, res) => {
     try {
-        const plans = await Plan.find().populate('invitationId lobbyId cateringId flowerId UserId');
+        const plans = await Plan.find().populate('planId invitationId lobbyId cateringId flowerId UserId');
 
         return res.status(200).json({
             status: true,
@@ -158,12 +158,12 @@ router.get('/all', async (req, res) => {
 router.get('/:id', async (req, res) => {
     try {
         const plan = await Plan.findById(req.params.id).populate(
+            'PlanId ClothesId',
             'invitationId', 'name','Style_cardId name','price','imageUrl',
             'lobbyId', 'name','price','SoLuongKhach','imageUrl', 'weddingHallId location name',
             'cateringId', 'name','price','cate_cateringId name','imageUrl',
             'flowerId','name', 'price','imageUrl','description',
             'UserId', 'name', 'phone','address',
-            'ClothesId', 'name','price', 'Category_ClothesId name','Silhouette','fabrics','color','neckline','sleeve','imageUrl'
             );
 
         if (!plan) {
