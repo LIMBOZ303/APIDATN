@@ -188,9 +188,8 @@ router.get('/all', async (req, res) => {
 
 router.get('/:id', async (req, res) => {
     try {
-        // Tìm kế hoạch theo ID
         const plan = await Plan.findById(req.params.id)
-            .populate('invitationId', 'name price imageUrl') 
+            .populate('invitationId', 'name price imageUrl')
             .populate('lobbyId', 'name price SoLuongKhach imageUrl')
             .populate('cateringId', 'name price imageUrl')
             .populate('flowerId', 'name price imageUrl description')
@@ -199,27 +198,26 @@ router.get('/:id', async (req, res) => {
         if (!plan) {
             return res.status(404).json({
                 status: false,
-                message: "Không tìm thấy kế hoạch",
+                message: 'Không tìm thấy kế hoạch',
                 data: null
             });
         }
 
-        // Lấy thông tin Clothes thông qua bảng Plan_Clothes
-        const planClothes = await Plan_Clothes.findOne({ PlanId: plan._id }).populate('ClothesId', 'name price imageUrl description');
-
-        if (planClothes) {
-            plan.clothes = planClothes.ClothesId;  
-        }
-
+        // Lấy danh sách quần áo từ bảng Plan_Clothes
+        const planClothes = await Plan_Clothes.find({ PlanId: plan._id }).populate('ClothesId', 'name price imageUrl description');
+        
+        // Gán danh sách quần áo vào plan
+        const clothesList = planClothes.map(pc => pc.ClothesId);
+        
         return res.status(200).json({
             status: true,
-            message: "Lấy thông tin kế hoạch thành công",
-            data: plan
+            message: 'Lấy thông tin kế hoạch thành công',
+            data: { ...plan.toObject(), clothes: clothesList }
         });
     } catch (error) {
         return res.status(500).json({
             status: false,
-            message: "Lấy thông tin kế hoạch thất bại",
+            message: 'Lấy thông tin kế hoạch thất bại',
             data: error.message
         });
     }
