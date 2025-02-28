@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 
 const planSchema = new mongoose.Schema({
-    name: { type: String, required: true }, // Tên kế hoạch
+    name: { type: String }, // Tên kế hoạch
     invitationId:{type: mongoose.Schema.Types.ObjectId, ref: 'Invitation',required: true},
     lobbyId:{type: mongoose.Schema.Types.ObjectId, ref: 'Lobby',required: true},
     cateringId:{type: mongoose.Schema.Types.ObjectId, ref: 'Catering',required: true},
