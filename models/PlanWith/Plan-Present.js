@@ -1,16 +1,16 @@
 const mongoose = require('mongoose');
 
-const Plan_ClothesSchema = new mongoose.Schema({
+const Plan_PresentSchema = new mongoose.Schema({
     PlanId: { 
         type: mongoose.Schema.Types.ObjectId, 
         ref: 'Plan', 
         required: true 
     },
-    ClothesId: { 
+    PresentId: { 
         type: mongoose.Schema.Types.ObjectId, 
-        ref: 'Clothes', 
+        ref: 'present', 
         required: true 
     },
 }, { timestamps: true });
 
-module.exports = mongoose.model('Plan_Clothes', Plan_ClothesSchema);
+module.exports = mongoose.model('Plan_PresentSchema', Plan_PresentSchema);

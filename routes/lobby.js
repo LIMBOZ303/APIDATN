@@ -1,137 +1,84 @@
 const express = require('express');
 const router = express.Router();
-const Lobby = require('../models/lobbyModel');
+const Lobby = require('../models/lobbyModel');  // Đảm bảo đường dẫn đúng
 
-
-//thêm lobb
+// Thêm một phòng mới
 router.post('/add', async (req, res) => {
-    const { name, price, SoLuongKhach, imageUrl, weddingHallId } = req.body;
-    const lobby = new Lobby({ name, price, SoLuongKhach, imageUrl, weddingHallId });
+    const { name, price, SoLuongKhach, imageUrl } = req.body;
+
+    const lobby = new Lobby({
+        name,
+        price,
+        SoLuongKhach,
+        imageUrl
+    });
+
     try {
         await lobby.save();
-        return res.status(200).json({ status: true, message: "Thêm lobb thành công", data: lobby });
+        res.status(201).json({ status: true, message: "Thêm phòng thành công", data: lobby });
     } catch (error) {
-        return res.status(500).json({ status: false, message: "Lỗi khi thêm lobb" });
+        console.log(error);
+        res.status(500).json({ status: false, message: "Lỗi khi thêm phòng" });
     }
 });
 
-//lấy tất cả lobb
+// Lấy tất cả phòng
 router.get('/all', async (req, res) => {
     try {
-        const lobbies = await Lobby.find().populate('weddingHallId', 'name');
-        return res.status(200).json({ status: true, message: "done", data: lobbies });
+        const lobbies = await Lobby.find();
+        res.status(200).json({ status: true, message: "Lấy danh sách phòng thành công", data: lobbies });
     } catch (error) {
-        return res.status(500).json({ status: false, message: "false", });
+        console.log(error);
+        res.status(500).json({ status: false, message: "Thất bại khi lấy danh sách phòng" });
     }
 });
 
-//lấy lobb theo id
+// Lấy phòng theo ID
 router.get('/:id', async (req, res) => {
     try {
-        const lobby = await Lobby.findById(id).populate('weddingHallId');
+        const lobby = await Lobby.findById(req.params.id);
         if (!lobby) {
-            return res.status(404).json({ error: "Lobby không tồn tại" });
+            return res.status(404).json({ status: false, message: "Không tìm thấy phòng" });
         }
-        return res.status(200).json({status: true, message: "done", data: lobby});
+        res.status(200).json({ status: true, message: "Lấy phòng thành công", data: lobby });
     } catch (error) {
-        return res.status(500).json({status: false, message: "Lỗi khi lấy lobb theo id" });
+        console.log(error);
+        res.status(500).json({ status: false, message: "Lỗi khi lấy phòng" });
     }
 });
 
-//cập nhật lobb
+// Cập nhật phòng theo ID
 router.put('/update/:id', async (req, res) => {
-    const { name, price, SoLuongKhach, imageUrl, weddingHallId } = req.body;
-    try {
-        const lobby = await Lobby.findByIdAndUpdate(req.params.id, { name, price, SoLuongKhach, imageUrl, weddingHallId }, { new: true });
-        if (!lobby) {
-            return res.status(404).json({ error: "Lobby không tồn tại" });
-        }
-        return res.status(200).json({status: true, message: "Cập nhật lobb thành công", data: lobby });
-    } catch (error) {
-        console.log(error);
-        return res.status(500).json({status: false, message: "Lỗi khi cập nhật lobb" });
-    }
-});
-
-//xóa lobb
-router.delete('/:id', async (req, res) => {
-    try {
-        const lobby = await Lobby.findByIdAndDelete(req.params.id);
-        if (!lobby) {
-            return res.status(404).json({ error: "Lobby không tồn tại" });
-        }
-        return res.status(200).json({status: true, message: "Xóa lobb thành công", data: lobby });
-    } catch (error) {
-        return res.status(500).json({status: false, message: "Lỗi khi xóa lobb" });
-    }
-});
-// Lấy danh sách lobbies theo weddingHallId
-router.get("/by-hall/:weddingHallId", async (req, res) => {
-    try {
-        const { weddingHallId } = req.params;
-
-        if (!weddingHallId) {
-            return res.status(400).json({  status: false,message: "Thiếu weddingHallId" });
-        }
-
-        const lobbies = await Lobby.find({ weddingHallId });
-        res.status(200).json({ status: true, message: "thành công ", data: lobbies });
-    } catch (error) {
-        res.status(500).json({ status: false, message: "Thất Bại" });
-    }
-});
-
-// router.get('/by-hall/:weddingHallId', async (req, res) => {
-
-//     try {
-//         var list = await Lobby.find({ _id: req.params.id });
-//         res.status(200).json({ status: true, message: "thành công ", data: list });
-
-//     } catch (err) {
-//         res.status(400).json({ status: false, message: "Thất Bại" });
-//     }
-// });
-
-module.exports = router;
-//thêm
-router.post('/add', async (req, res) => {
-    const { hallId, name, price, description, imageUrl } = req.body;
-    const lobby = new Lobby({ hallId, name, price, description, imageUrl });
-    try {
-        await lobby.save();
-        res.status(200).json({ status: true, message: "Thêm thành công", data: lobby });
-    } catch (error) {
-        console.log(error);
-        res.status(500).json({ status: false, message: "thêm thất bại" });
-    }
-});
-
-//lấy tất
-router.get('/all', async (req, res) => {
-    try {
-        const lobbyEntries = await Lobby.find();
-        res.status(200).json({ status: true, message: "lấy thành công danh sách", data: lobbyEntries });
-    } catch (error) {
-        console.log(error);
-        res.status(500).json({ status: false, message: "Lỗi khi lấy tất cả áo" });
-    }
-});
-
-// Cập nhật Wedding Hall (PUT)
-router.put('/:id', async (req, res) => {
-    const { hallId, name, price, description, imageUrl } = req.body;
+    const { name, price, SoLuongKhach, imageUrl } = req.body;
 
     try {
         const updatedLobby = await Lobby.findByIdAndUpdate(
             req.params.id,
-            { hallId, name, price, description, imageUrl },
+            { name, price, SoLuongKhach, imageUrl },
             { new: true }
         );
-        if (!updatedLobby) return res.status(404).json({ status: false, message: 'Lobby not found' });
-        return res.status(200).json({ status: true, message: "update thành công", data: updatedLobby });
-    } catch (error) {
+        if (!updatedLobby) {
+            return res.status(404).send("Phòng không tồn tại");
+        }
 
-        return res.status(400).json({ status: false, message: 'Error updating Lobby' });
+        res.status(200).json({ status: true, message: "Cập nhật phòng thành công", data: updatedLobby });
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({ status: false, message: "Lỗi khi cập nhật phòng" });
+    }
+});
+
+// Xóa phòng theo ID
+router.delete('/delete/:id', async (req, res) => {
+    try {
+        const deletedLobby = await Lobby.findByIdAndDelete(req.params.id);
+        if (!deletedLobby) {
+            return res.status(404).json({ status: false, message: "Phòng không tồn tại" });
+        }
+        res.status(200).json({ status: true, message: "Xóa phòng thành công", data: deletedLobby });
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({ status: false, message: "Lỗi khi xóa phòng" });
     }
 });
 

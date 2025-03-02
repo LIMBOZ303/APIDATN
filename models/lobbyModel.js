@@ -6,7 +6,6 @@ const lobbySchema = new mongoose.Schema({
     price: { type: Number, required: true },
     SoLuongKhach: { type: Number, required: true },
     imageUrl: { type: String, required: true },
-    weddingHallId: { type: mongoose.Schema.Types.ObjectId, ref: "WeddingHall", required: true },
 }, { timestamps: true });
 
 const Lobby = mongoose.model("Lobby", lobbySchema);

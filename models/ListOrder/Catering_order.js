@@ -6,9 +6,9 @@ const Catering_orderSchema = new mongoose.Schema({
         ref: 'Catering', 
         required: true 
     },
-    FavoriteId: { 
+    UserId: { 
         type: mongoose.Schema.Types.ObjectId, 
-        ref: 'favorite', 
+        ref: 'User', 
         required: true 
     },
 }, { timestamps: true });

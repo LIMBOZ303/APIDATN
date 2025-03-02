@@ -1,6 +1,6 @@
 const express = require('express');
 const mongoose = require('mongoose');
-const CateringOrder = require('../models/Catering_order'); // Đảm bảo đường dẫn tới model Catering_order đúng
+const CateringOrder = require('../models/ListOrder/Catering_order'); // Đảm bảo đường dẫn tới model Catering_order đúng
 
 const router = express.Router();
 
