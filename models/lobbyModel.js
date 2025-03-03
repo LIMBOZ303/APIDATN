@@ -8,7 +8,7 @@ const lobbySchema = new mongoose.Schema({
     imageUrl: { type: String, required: true },
 }, { timestamps: true });
 
-const Lobby = mongoose.model("Lobby", lobbySchema);
+const Lobby = mongoose.model("Lobbi", lobbySchema);
 
 module.exports = Lobby;
 
