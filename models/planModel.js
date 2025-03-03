@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 
 const planSchema = new mongoose.Schema({
-
+   
     SanhId:{type: mongoose.Schema.Types.ObjectId, ref: 'Sanh',required: true},
     UserId: {type: mongoose.Schema.Types.ObjectId, ref: 'User',required: true},
     totalPrice:{type: Number,required: false},
@@ -9,6 +9,7 @@ const planSchema = new mongoose.Schema({
     planprice:{type: Number,required: true},
     plansoluongkhach:{type: Number,required: true},
     plandateevent:{type: Date,required: true},
+    name: { type: String, required: false },
 },{timestamps: true});
 
 // Middleware để tự động đặt tên theo userId
