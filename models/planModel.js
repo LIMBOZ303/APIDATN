@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 
 const planSchema = new mongoose.Schema({
 
-    SanhId:{type: mongoose.Schema.Types.ObjectId, ref: 'Sanh',required: true},
+    SanhId:{type: mongoose.Schema.Types.ObjectId, ref: 'Lobby',required: true},
     UserId: {type: mongoose.Schema.Types.ObjectId, ref: 'User',required: true},
     totalPrice:{type: Number,required: false},
     status:{type: String,enum:['active','inactive'],default:'active'},

@@ -1,9 +1,9 @@
 const mongoose = require('mongoose');
 
 const Lobby_orderSchema = new mongoose.Schema({
-    SanhId: { 
+    LobbyId: { 
         type: mongoose.Schema.Types.ObjectId, 
-        ref: 'Sanh', 
+        ref: 'Lobby', 
         required: true 
     },
     UserId: { 

@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const Lobby = require('../models/Sanh');  // Đảm bảo đường dẫn đúng
+const Lobby = require('../models/lobbyModel');  // Đảm bảo đường dẫn đúng
 
 // Thêm một phòng mới
 router.post('/add', async (req, res) => {
