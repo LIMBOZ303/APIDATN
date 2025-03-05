@@ -9,9 +9,8 @@ const Plan_present = require('../models/PlanWith/Plan-Present')
 
 router.post('/add', async (req, res) => {
     try {
-        const { name, SanhId, planprice, plansoluongkhach, plandateevent, cateringId, decorateId, presentId } = req.body;
+        const { name, SanhId, planprice, plansoluongkhach, plandateevent, cateringId = [], decorateId = [], presentId = [] } = req.body;
 
-        // Kiểm tra nếu thiếu dữ liệu bắt buộc
         if (!name || !SanhId || !planprice || !plansoluongkhach || !plandateevent) {
             return res.status(400).json({ status: false, message: "Thiếu dữ liệu bắt buộc" });
         }
@@ -23,27 +22,27 @@ router.post('/add', async (req, res) => {
         if (!sanh) {
             return res.status(404).json({ status: false, message: "Không tìm thấy sảnh" });
         }
-        totalPrice += sanh.price; // Cộng giá sảnh vào tổng
+        totalPrice += sanh.price;
 
-        // Lấy giá của dịch vụ ăn uống
-        if (cateringId) {
-            const catering = await Catering.findById(cateringId);
-            if (catering) totalPrice += catering.price;
+        // Lấy giá của các dịch vụ ăn uống
+        if (Array.isArray(cateringId) && cateringId.length > 0) {
+            const caterings = await Catering.find({ _id: { $in: cateringId } });
+            caterings.forEach(catering => totalPrice += catering.price);
         }
 
-        // Lấy giá của dịch vụ trang trí
-        if (decorateId) {
-            const decorate = await Decorate.findById(decorateId);
-            if (decorate) totalPrice += decorate.price;
+        // Lấy giá của các dịch vụ trang trí
+        if (Array.isArray(decorateId) && decorateId.length > 0) {
+            const decorates = await Decorate.find({ _id: { $in: decorateId } });
+            decorates.forEach(decorate => totalPrice += decorate.price);
         }
 
-        // Lấy giá của dịch vụ biểu diễn
-        if (presentId) {
-            const present = await Present.findById(presentId);
-            if (present) totalPrice += present.price;
+        // Lấy giá của các dịch vụ biểu diễn
+        if (Array.isArray(presentId) && presentId.length > 0) {
+            const presents = await Present.find({ _id: { $in: presentId } });
+            presents.forEach(present => totalPrice += present.price);
         }
 
-        // Tạo mới kế hoạch (Plan) với tổng giá tiền đã tính
+        // Tạo mới kế hoạch
         const newPlan = await Plan.create({
             name,
             SanhId,
@@ -55,15 +54,17 @@ router.post('/add', async (req, res) => {
 
         const planId = newPlan._id;
 
-        // Liên kết với các dịch vụ nếu có
-        if (cateringId) {
-            await Plan_catering.create({ PlanId: planId, CateringId: cateringId });
+        // Liên kết với các dịch vụ
+        if (Array.isArray(cateringId) && cateringId.length > 0) {
+            await Plan_catering.insertMany(cateringId.map(id => ({ PlanId: planId, CateringId: id })));
         }
-        if (decorateId) {
-            await Plan_decorate.create({ PlanId: planId, DecorateId: decorateId });
+
+        if (Array.isArray(decorateId) && decorateId.length > 0) {
+            await Plan_decorate.insertMany(decorateId.map(id => ({ PlanId: planId, DecorateId: id })));
         }
-        if (presentId) {
-            await Plan_present.create({ PlanId: planId, PresentId: presentId });
+
+        if (Array.isArray(presentId) && presentId.length > 0) {
+            await Plan_present.insertMany(presentId.map(id => ({ PlanId: planId, PresentId: id })));
         }
 
         return res.status(201).json({ status: true, message: "Thêm kế hoạch và dịch vụ thành công", data: newPlan });
@@ -72,6 +73,7 @@ router.post('/add', async (req, res) => {
         return res.status(500).json({ status: false, message: "Lỗi khi thêm kế hoạch" });
     }
 });
+
 
 
 
