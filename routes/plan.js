@@ -52,7 +52,7 @@ router.post('/add', async (req, res) => {
 // Lấy tất cả kế hoạch
 router.get('/all', async (req, res) => {
     try {
-        const plans = await Plan.find().populate('planId')
+        const plans = await Plan.find()
             .populate('SanhId') // Populate thông tin sảnh
             .populate('UserId', 'name email'); // Populate thông tin người dùng
 
@@ -62,8 +62,15 @@ router.get('/all', async (req, res) => {
             const decorates = await Plan_decorate.find({ PlanId: plan._id }).populate('DecorateId');
             const presents = await Plan_present.find({ PlanId: plan._id }).populate('PresentId');
 
+            // Nếu totalPrice chưa có hoặc bị lỗi, tự động cập nhật
+            if (!plan.totalPrice) {
+                await plan.calculateTotalPrice();
+                await plan.save(); // Lưu lại totalPrice vào DB
+            }
+
             return {
                 ...plan.toObject(),
+                totalPrice: plan.totalPrice, // Đảm bảo totalPrice hiển thị
                 caterings: caterings.map(item => item.CateringId),
                 decorates: decorates.map(item => item.DecorateId),
                 presents: presents.map(item => item.PresentId)
@@ -76,6 +83,7 @@ router.get('/all', async (req, res) => {
         res.status(500).json({ status: false, message: "Thất bại khi lấy danh sách kế hoạch" });
     }
 });
+
 
 // Lấy kế hoạch theo ID
 router.get('/:id', async (req, res) => {
