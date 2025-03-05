@@ -97,11 +97,11 @@ router.delete('/delete/:id', async (req, res) => {
     }
 });
 
-router.get('/decorate/:Cate_decorateId', async function (req, res) {
+router.get('/loai/:Cate_decorateId', async function (req, res) {
     try {
 
 
-        var list = await Decorate.find({ decorate: req.params.Cate_decorateId });
+        var list = await Decorate.find({ loai: req.params.Cate_decorateId });
         res.status(200).json({ status: true, data: list });
 
     } catch (err) {
