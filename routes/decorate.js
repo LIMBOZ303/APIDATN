@@ -97,16 +97,20 @@ router.delete('/delete/:id', async (req, res) => {
     }
 });
 
-router.get('/loai/:Cate_decorateId', async function (req, res) {
+router.get("/decorates/:cateId", async (req, res) => {
     try {
-
-
-        var list = await Decorate.find({ loai: req.params.Cate_decorateId });
-        res.status(200).json({ status: true, data: list });
-
-    } catch (err) {
-        res.status(400).json({ status: false, message: "Thất Bại" });
+        const { cateId } = req.params;
+        const decorates = await Decorate.find({ Cate_decorateId: cateId });
+        
+        if (decorates.length === 0) {
+            return res.status(404).json({ message: "Không tìm thấy decorate nào." });
+        }
+        
+        res.status(200).json(decorates);
+    } catch (error) {
+        res.status(500).json({ message: "Lỗi server", error: error.message });
     }
 });
+
 
 module.exports = router;
