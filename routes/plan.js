@@ -9,36 +9,59 @@ const Plan_present = require('../models/PlanWith/Plan-Present')
 
 router.post('/add', async (req, res) => {
     try {
-        const { name, SanhId, UserId, totalPrice, planprice, plansoluongkhach, plandateevent, cateringId, decorateId, presentId } = req.body;
+        const { name, SanhId, planprice, plansoluongkhach, plandateevent, cateringId, decorateId, presentId } = req.body;
 
-        // Kiểm tra nếu thiếu dữ liệu
-        if (!name || !SanhId || !UserId || !planprice || !plansoluongkhach || !plandateevent) {
+        // Kiểm tra nếu thiếu dữ liệu bắt buộc
+        if (!name || !SanhId || !planprice || !plansoluongkhach || !plandateevent) {
             return res.status(400).json({ status: false, message: "Thiếu dữ liệu bắt buộc" });
         }
 
-        // Tạo mới một kế hoạch (Plan)
+        let totalPrice = 0;
+
+        // Lấy giá sảnh
+        const sanh = await Lobby.findById(SanhId);
+        if (!sanh) {
+            return res.status(404).json({ status: false, message: "Không tìm thấy sảnh" });
+        }
+        totalPrice += sanh.price; // Cộng giá sảnh vào tổng
+
+        // Lấy giá của dịch vụ ăn uống
+        if (cateringId) {
+            const catering = await Catering.findById(cateringId);
+            if (catering) totalPrice += catering.price;
+        }
+
+        // Lấy giá của dịch vụ trang trí
+        if (decorateId) {
+            const decorate = await Decorate.findById(decorateId);
+            if (decorate) totalPrice += decorate.price;
+        }
+
+        // Lấy giá của dịch vụ biểu diễn
+        if (presentId) {
+            const present = await Present.findById(presentId);
+            if (present) totalPrice += present.price;
+        }
+
+        // Tạo mới kế hoạch (Plan) với tổng giá tiền đã tính
         const newPlan = await Plan.create({
             name,
             SanhId,
-            UserId,
             totalPrice,
             planprice,
             plansoluongkhach,
             plandateevent
         });
 
-        // Lấy _id của Plan mới
         const planId = newPlan._id;
 
         // Liên kết với các dịch vụ nếu có
         if (cateringId) {
             await Plan_catering.create({ PlanId: planId, CateringId: cateringId });
         }
-
         if (decorateId) {
             await Plan_decorate.create({ PlanId: planId, DecorateId: decorateId });
         }
-
         if (presentId) {
             await Plan_present.create({ PlanId: planId, PresentId: presentId });
         }
@@ -49,6 +72,7 @@ router.post('/add', async (req, res) => {
         return res.status(500).json({ status: false, message: "Lỗi khi thêm kế hoạch" });
     }
 });
+
 
 
 // Lấy tất cả kế hoạch
