@@ -22,7 +22,7 @@ router.post('/add', async (req, res) => {
         if (!sanh) {
             return res.status(404).json({ status: false, message: "Không tìm thấy sảnh" });
         }
-        totalPrice += sanh.price;
+        
 
         // Lấy giá của các dịch vụ ăn uống
         let caterings = [];
@@ -44,6 +44,10 @@ router.post('/add', async (req, res) => {
             presents = await Plan_present.find({ _id: { $in: presentId } });
             totalPrice += presents.reduce((sum, present) => sum + present.price, 0);
         }
+        totalPrice += caterings.reduce((sum, c) => sum + (c.price || 0), 0);
+        totalPrice += decorates.reduce((sum, d) => sum + (d.price || 0), 0);
+        totalPrice += presents.reduce((sum, p) => sum + (p.price || 0), 0);
+
 
         // Tạo mới kế hoạch
         const newPlan = await Plan.create({
@@ -118,7 +122,7 @@ router.get('/:id', async (req, res) => {
         }
 
         const plan = await Plan.findById(planId)
-            .populate('SanhId') 
+            .populate('SanhId')
             .populate('UserId', 'name email'); // Chỉ lấy name & email
 
         if (!plan) {
@@ -140,7 +144,7 @@ router.get('/:id', async (req, res) => {
             }
         });
     } catch (error) {
-        console.error(error); 
+        console.error(error);
         res.status(500).json({ status: false, message: "Lỗi khi lấy dữ liệu" });
     }
 });
