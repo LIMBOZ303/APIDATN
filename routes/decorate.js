@@ -97,20 +97,13 @@ router.delete('/delete/:id', async (req, res) => {
     }
 });
 
-router.get("/decorates/:cateId", async (req, res) => {
+router.get("/decorates/:cateId", async function (req, res) {
     try {
-        const { cateId } = req.params;
-        const decorates = await Decorate.find({ Cate_decorateId: cateId });
-        
-        if (decorates.length === 0) {
-            return res.status(404).json({ message: "Không tìm thấy decorate nào." });
-        }
-        
-        res.status(200).json(decorates);
-    } catch (error) {
-        res.status(500).json({ message: "Lỗi server", error: error.message });
+        var list = await Decorate.find({ Cate_decorateId: req.params.cateId });
+        res.status(200).json({ status: true, data: list });
+    } catch (err) {
+        res.status(400).json({ status: false, message: "Thất Bại" });
     }
 });
-
 
 module.exports = router;
