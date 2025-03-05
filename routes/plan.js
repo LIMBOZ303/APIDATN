@@ -52,7 +52,7 @@ router.post('/add', async (req, res) => {
 // Lấy tất cả kế hoạch
 router.get('/all', async (req, res) => {
     try {
-        const plans = await Plan.find()
+        const plans = await Plan.find().populate('planId')
             .populate('SanhId') // Populate thông tin sảnh
             .populate('UserId', 'name email'); // Populate thông tin người dùng
 
