@@ -25,21 +25,24 @@ router.post('/add', async (req, res) => {
         totalPrice += sanh.price;
 
         // Lấy giá của các dịch vụ ăn uống
+        let caterings = [];
         if (Array.isArray(cateringId) && cateringId.length > 0) {
-            const caterings = await Plan_catering.find({ _id: { $in: cateringId } });
-            caterings.forEach(Plan_catering => totalPrice += Plan_catering.price);
+            caterings = await Plan_catering.find({ _id: { $in: cateringId } });
+            totalPrice += caterings.reduce((sum, catering) => sum + catering.price, 0);
         }
 
         // Lấy giá của các dịch vụ trang trí
+        let decorates = [];
         if (Array.isArray(decorateId) && decorateId.length > 0) {
-            const decorates = await Plan_decorate.find({ _id: { $in: decorateId } });
-            decorates.forEach(Plan_decorate => totalPrice += Plan_decorate.price);
+            decorates = await Plan_decorate.find({ _id: { $in: decorateId } });
+            totalPrice += decorates.reduce((sum, decorate) => sum + decorate.price, 0);
         }
 
         // Lấy giá của các dịch vụ biểu diễn
+        let presents = [];
         if (Array.isArray(presentId) && presentId.length > 0) {
-            const presents = await Plan_present.find({ _id: { $in: presentId } });
-            presents.forEach(Plan_present => totalPrice += Plan_present.price);
+            presents = await Plan_present.find({ _id: { $in: presentId } });
+            totalPrice += presents.reduce((sum, present) => sum + present.price, 0);
         }
 
         // Tạo mới kế hoạch
@@ -55,16 +58,16 @@ router.post('/add', async (req, res) => {
         const planId = newPlan._id;
 
         // Liên kết với các dịch vụ
-        if (Array.isArray(cateringId) && cateringId.length > 0) {
-            await Plan_catering.insertMany(cateringId.map(id => ({ PlanId: planId, CateringId: id })));
+        if (caterings.length > 0) {
+            await Plan_catering.insertMany(caterings.map(catering => ({ PlanId: planId, CateringId: catering._id })));
         }
 
-        if (Array.isArray(decorateId) && decorateId.length > 0) {
-            await Plan_decorate.insertMany(decorateId.map(id => ({ PlanId: planId, DecorateId: id })));
+        if (decorates.length > 0) {
+            await Plan_decorate.insertMany(decorates.map(decorate => ({ PlanId: planId, DecorateId: decorate._id })));
         }
 
-        if (Array.isArray(presentId) && presentId.length > 0) {
-            await Plan_present.insertMany(presentId.map(id => ({ PlanId: planId, PresentId: id })));
+        if (presents.length > 0) {
+            await Plan_present.insertMany(presents.map(present => ({ PlanId: planId, PresentId: present._id })));
         }
 
         return res.status(201).json({ status: true, message: "Thêm kế hoạch và dịch vụ thành công", data: newPlan });
@@ -73,7 +76,6 @@ router.post('/add', async (req, res) => {
         return res.status(500).json({ status: false, message: "Lỗi khi thêm kế hoạch" });
     }
 });
-
 
 
 
