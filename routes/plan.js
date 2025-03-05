@@ -15,38 +15,11 @@ router.post('/add', async (req, res) => {
             return res.status(400).json({ status: false, message: "Thiếu dữ liệu bắt buộc" });
         }
 
-        let totalPrice = 0;
-
-        // Lấy giá sảnh
-        const sanh = await Lobby.findById(SanhId);
-        if (!sanh) {
-            return res.status(404).json({ status: false, message: "Không tìm thấy sảnh" });
-        }
-        totalPrice += sanh.price;
-
-        // Lấy giá của các dịch vụ ăn uống
-        if (Array.isArray(cateringId) && cateringId.length > 0) {
-            const caterings = await Plan_catering.find({ _id: { $in: cateringId } });
-            caterings.forEach(catering => totalPrice += catering.price);
-        }
-
-        // Lấy giá của các dịch vụ trang trí
-        if (Array.isArray(decorateId) && decorateId.length > 0) {
-            const decorates = await Plan_decorate.find({ _id: { $in: decorateId } });
-            decorates.forEach(decorate => totalPrice += decorate.price);
-        }
-
-        // Lấy giá của các dịch vụ biểu diễn
-        if (Array.isArray(presentId) && presentId.length > 0) {
-            const presents = await Plan_present.find({ _id: { $in: presentId } });
-            presents.forEach(present => totalPrice += present.price);
-        }
-
+       
         // Tạo mới kế hoạch
         const newPlan = await Plan.create({
             name,
             SanhId,
-            totalPrice,
             planprice,
             plansoluongkhach,
             plandateevent
