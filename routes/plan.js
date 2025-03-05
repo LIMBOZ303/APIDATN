@@ -6,6 +6,7 @@ const User = require('../models/userModel');
 const Plan_catering = require('../models/PlanWith/Plan-Catering')
 const Plan_decorate = require('../models/PlanWith/Plan-Decorate')
 const Plan_present = require('../models/PlanWith/Plan-Present')
+const cate_catering = require('../models/Cate/cate_cateringModel')
 
 router.post('/add', async (req, res) => {
     try {
@@ -15,7 +16,7 @@ router.post('/add', async (req, res) => {
             return res.status(400).json({ status: false, message: "Thiếu dữ liệu bắt buộc" });
         }
 
-       
+
         // Tạo mới kế hoạch
         const newPlan = await Plan.create({
             name,
@@ -58,9 +59,30 @@ router.get('/all', async (req, res) => {
 
         // Lấy dịch vụ từ bảng trung gian
         const populatedPlans = await Promise.all(plans.map(async (plan) => {
-            const caterings = await Plan_catering.find({ PlanId: plan._id }).populate('CateringId');
-            const decorates = await Plan_decorate.find({ PlanId: plan._id }).populate('DecorateId');
-            const presents = await Plan_present.find({ PlanId: plan._id }).populate('PresentId');
+            const caterings = await Plan_catering.find({ PlanId: plan._id })
+                .populate({
+                    path: 'CateringId',
+                    populate: {
+                        path: 'cate_cateringId', // Populate lồng
+                        select: 'name' // Chỉ lấy name
+                    }
+                });
+            const decorates = await Plan_decorate.find({ PlanId: plan._id })
+                .populate({
+                    path: 'DecorateId',
+                    populate: {
+                        path: 'Cate_decorateId',
+                        select: 'name'
+                    }
+                });
+            const presents = await Plan_present.find({ PlanId: plan._id })
+                .populate({
+                    path: 'PresentId',
+                    populate: {
+                        path: 'Cate_presentId',
+                        select: 'name'
+                    }
+                });
 
             // Nếu totalPrice chưa có hoặc bị lỗi, tự động cập nhật
             if (!plan.totalPrice) {
@@ -73,7 +95,8 @@ router.get('/all', async (req, res) => {
                 totalPrice: plan.totalPrice, // Đảm bảo totalPrice hiển thị
                 caterings: caterings.map(item => item.CateringId),
                 decorates: decorates.map(item => item.DecorateId),
-                presents: presents.map(item => item.PresentId)
+                presents: presents.map(item => item.PresentId),
+
             };
         }));
 
@@ -83,6 +106,7 @@ router.get('/all', async (req, res) => {
         res.status(500).json({ status: false, message: "Thất bại khi lấy danh sách kế hoạch" });
     }
 });
+
 
 
 // Lấy kế hoạch theo ID
