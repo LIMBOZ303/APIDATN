@@ -26,20 +26,20 @@ router.post('/add', async (req, res) => {
 
         // Lấy giá của các dịch vụ ăn uống
         if (Array.isArray(cateringId) && cateringId.length > 0) {
-            const caterings = await Catering.find({ _id: { $in: cateringId } });
-            caterings.forEach(catering => totalPrice += catering.price);
+            const caterings = await Plan_catering.find({ _id: { $in: cateringId } });
+            caterings.forEach(Plan_catering => totalPrice += Plan_catering.price);
         }
 
         // Lấy giá của các dịch vụ trang trí
         if (Array.isArray(decorateId) && decorateId.length > 0) {
-            const decorates = await Decorate.find({ _id: { $in: decorateId } });
-            decorates.forEach(decorate => totalPrice += decorate.price);
+            const decorates = await Plan_decorate.find({ _id: { $in: decorateId } });
+            decorates.forEach(Plan_decorate => totalPrice += Plan_decorate.price);
         }
 
         // Lấy giá của các dịch vụ biểu diễn
         if (Array.isArray(presentId) && presentId.length > 0) {
-            const presents = await Present.find({ _id: { $in: presentId } });
-            presents.forEach(present => totalPrice += present.price);
+            const presents = await Plan_present.find({ _id: { $in: presentId } });
+            presents.forEach(Plan_present => totalPrice += Plan_present.price);
         }
 
         // Tạo mới kế hoạch
