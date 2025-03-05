@@ -9,7 +9,7 @@ const Plan_present = require('../models/PlanWith/Plan-Present')
 
 router.post('/add', async (req, res) => {
     try {
-        const { name, SanhId, UserId, planprice, plansoluongkhach, plandateevent, planId, cateringId, decorateId, presentId } = req.body;
+        const { name, SanhId, UserId, totalPrice, planprice, plansoluongkhach, plandateevent, planId, cateringId, decorateId, presentId } = req.body;
 
         if (cateringId) {
             await Plan_catering.create({ PlanId: planId, CateringId: cateringId });
@@ -34,8 +34,11 @@ router.post('/add', async (req, res) => {
 router.get('/all', async (req, res) => {
     try {
         const plans = await Plan.find()
-            .populate('SanhId')  // Populate thông tin phòng
-            .populate('UserId');  // Populate thông tin người dùng
+            .populate('SanhId')
+            .populate('cateringId')
+            .populate('decorateId')
+            .populate('presentId')
+            .populate('UserId');
         res.status(200).json({ status: true, message: "Lấy danh sách kế hoạch thành công", data: plans });
     } catch (error) {
         console.log(error);
@@ -51,7 +54,10 @@ router.get('/:id', async (req, res) => {
 
         const plan = await Plan.findById(planId)
             .populate('lobbyId')
-            .populate('UserId', 'name email');
+            .populate('cateringId')
+            .populate('decorateId')
+            .populate('presentId')
+            .populate('UserId');
 
         if (!plan) {
             return res.status(404).json({ status: false, message: "Không tìm thấy kế hoạch" });
@@ -110,7 +116,10 @@ router.get('/user/:userId', async (req, res) => {
         const { userId } = req.params;
 
         const plans = await Plan.find({ UserId: userId })
-            .populate('SanhId')  
+            .populate('SanhId')
+            .populate('cateringId')
+            .populate('decorateId')
+            .populate('presentId')
             .populate('UserId');
 
         if (!plans.length) {

@@ -6,7 +6,7 @@ const planSchema = new mongoose.Schema({
     UserId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     totalPrice: { type: Number, required: false },
     status: { type: String, enum: ['active', 'inactive'], default: 'active' },
-    planprice: { type: Number, required: true },
+    planprice: { type: Number, required: false },
     plansoluongkhach: { type: Number, required: true },
     plandateevent: { type: Date, required: true },
     name: { type: String, required: false },
