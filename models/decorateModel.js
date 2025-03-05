@@ -10,6 +10,6 @@ const decorateSchema = new mongoose.Schema({
     
 }, { timestamps: true });
 
-const Lobby = mongoose.model("decorate", decorateSchema);
+const Decorate = mongoose.model("decorate", decorateSchema);
 
-module.exports = Lobby;
+module.exports = Decorate;

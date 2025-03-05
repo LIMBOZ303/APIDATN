@@ -10,6 +10,6 @@ const presentSchema = new mongoose.Schema({
     
 }, { timestamps: true });
 
-const Lobby = mongoose.model("present", presentSchema);
+const Present = mongoose.model("present", presentSchema);
 
-module.exports = Lobby;
+module.exports = Present;
