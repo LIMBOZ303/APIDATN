@@ -22,32 +22,25 @@ router.post('/add', async (req, res) => {
         if (!sanh) {
             return res.status(404).json({ status: false, message: "Không tìm thấy sảnh" });
         }
-        
+        totalPrice += sanh.price;
 
         // Lấy giá của các dịch vụ ăn uống
-        let caterings = [];
         if (Array.isArray(cateringId) && cateringId.length > 0) {
-            caterings = await Plan_catering.find({ _id: { $in: cateringId } });
-            totalPrice += caterings.reduce((sum, catering) => sum + catering.price, 0);
+            const caterings = await Plan_catering.find({ _id: { $in: cateringId } });
+            caterings.forEach(catering => totalPrice += catering.price);
         }
 
         // Lấy giá của các dịch vụ trang trí
-        let decorates = [];
         if (Array.isArray(decorateId) && decorateId.length > 0) {
-            decorates = await Plan_decorate.find({ _id: { $in: decorateId } });
-            totalPrice += decorates.reduce((sum, decorate) => sum + decorate.price, 0);
+            const decorates = await Plan_decorate.find({ _id: { $in: decorateId } });
+            decorates.forEach(decorate => totalPrice += decorate.price);
         }
 
         // Lấy giá của các dịch vụ biểu diễn
-        let presents = [];
         if (Array.isArray(presentId) && presentId.length > 0) {
-            presents = await Plan_present.find({ _id: { $in: presentId } });
-            totalPrice += presents.reduce((sum, present) => sum + present.price, 0);
+            const presents = await Plan_present.find({ _id: { $in: presentId } });
+            presents.forEach(present => totalPrice += present.price);
         }
-        totalPrice += caterings.reduce((sum, c) => sum + (c.price || 0), 0);
-        totalPrice += decorates.reduce((sum, d) => sum + (d.price || 0), 0);
-        totalPrice += presents.reduce((sum, p) => sum + (p.price || 0), 0);
-
 
         // Tạo mới kế hoạch
         const newPlan = await Plan.create({
@@ -62,16 +55,16 @@ router.post('/add', async (req, res) => {
         const planId = newPlan._id;
 
         // Liên kết với các dịch vụ
-        if (caterings.length > 0) {
-            await Plan_catering.insertMany(caterings.map(catering => ({ PlanId: planId, CateringId: catering._id })));
+        if (Array.isArray(cateringId) && cateringId.length > 0) {
+            await Plan_catering.insertMany(cateringId.map(id => ({ PlanId: planId, CateringId: id })));
         }
 
-        if (decorates.length > 0) {
-            await Plan_decorate.insertMany(decorates.map(decorate => ({ PlanId: planId, DecorateId: decorate._id })));
+        if (Array.isArray(decorateId) && decorateId.length > 0) {
+            await Plan_decorate.insertMany(decorateId.map(id => ({ PlanId: planId, DecorateId: id })));
         }
 
-        if (presents.length > 0) {
-            await Plan_present.insertMany(presents.map(present => ({ PlanId: planId, PresentId: present._id })));
+        if (Array.isArray(presentId) && presentId.length > 0) {
+            await Plan_present.insertMany(presentId.map(id => ({ PlanId: planId, PresentId: id })));
         }
 
         return res.status(201).json({ status: true, message: "Thêm kế hoạch và dịch vụ thành công", data: newPlan });
@@ -252,25 +245,59 @@ router.get('/user/:userId', async (req, res) => {
 // Xóa kế hoạch theo ID
 router.delete('/:planId', async (req, res) => {
     try {
-        const { planId, serviceType, serviceId } = req.params;
+        const { planId } = req.params;
+        const { serviceType, serviceId } = req.query; // Dùng query thay vì params để linh hoạt hơn
 
-        let model;
-        if (serviceType === "catering") model = Plan_catering;
-        else if (serviceType === "decorate") model = Plan_decorate;
-        else if (serviceType === "present") model = Plan_present;
-        else return res.status(400).json({ status: false, message: "Loại dịch vụ không hợp lệ" });
-
-        const deletedService = await model.findOneAndDelete({ PlanId: planId, [`${serviceType}Id`]: serviceId });
-
-        if (!deletedService) {
-            return res.status(404).json({ status: false, message: "Dịch vụ không tồn tại trong kế hoạch" });
+        // Kiểm tra xem ID hợp lệ không
+        if (!planId.match(/^[0-9a-fA-F]{24}$/)) {
+            return res.status(400).json({ status: false, message: "PlanId không hợp lệ" });
         }
 
-        res.status(200).json({ status: true, message: "Xóa dịch vụ thành công" });
+        // Nếu có serviceType và serviceId → Xóa dịch vụ trong kế hoạch
+        if (serviceType && serviceId) {
+            let model;
+            let fieldName;
+
+            if (serviceType === "catering") {
+                model = Plan_catering;
+                fieldName = "CateringId";
+            } else if (serviceType === "decorate") {
+                model = Plan_decorate;
+                fieldName = "DecorateId";
+            } else if (serviceType === "present") {
+                model = Plan_present;
+                fieldName = "PresentId";
+            } else {
+                return res.status(400).json({ status: false, message: "Loại dịch vụ không hợp lệ" });
+            }
+
+            const deletedService = await model.findOneAndDelete({ PlanId: planId, [fieldName]: serviceId });
+
+            if (!deletedService) {
+                return res.status(404).json({ status: false, message: "Dịch vụ không tồn tại trong kế hoạch" });
+            }
+
+            return res.status(200).json({ status: true, message: "Xóa dịch vụ thành công" });
+        }
+
+        // Nếu không có serviceType → Xóa toàn bộ kế hoạch và các dịch vụ liên quan
+        const deletedPlan = await Plan.findByIdAndDelete(planId);
+        if (!deletedPlan) {
+            return res.status(404).json({ status: false, message: "Không tìm thấy kế hoạch" });
+        }
+
+        // Xóa các dịch vụ liên quan trong bảng trung gian
+        await Plan_catering.deleteMany({ PlanId: planId });
+        await Plan_decorate.deleteMany({ PlanId: planId });
+        await Plan_present.deleteMany({ PlanId: planId });
+
+        return res.status(200).json({ status: true, message: "Xóa kế hoạch và các dịch vụ liên quan thành công" });
     } catch (error) {
-        res.status(500).json({ status: false, message: "Lỗi khi xóa dịch vụ" });
+        console.error(error);
+        return res.status(500).json({ status: false, message: "Lỗi khi xóa kế hoạch hoặc dịch vụ" });
     }
 });
+
 
 
 module.exports = router;
