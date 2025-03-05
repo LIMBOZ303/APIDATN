@@ -96,5 +96,13 @@ router.delete('/delete/:id', async (req, res) => {
         res.status(500).json({ status: false, message: "Lỗi khi xóa sản phẩm quà tặng" });
     }
 });
+router.get("/present/:presentId", async function (req, res) {
+    try {
+        var list = await Decorate.find({ Cate_presentId: req.params.presentId });
+        res.status(200).json({ status: true, data: list });
+    } catch (err) {
+        res.status(400).json({ status: false, message: "Thất Bại" });
+    }
+});
 
 module.exports = router;

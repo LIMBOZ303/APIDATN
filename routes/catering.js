@@ -69,5 +69,14 @@ router.delete('/delete/:id', async (req, res) => {
     }
 });
 
+router.get("/catering/:cateringId", async function (req, res) {
+    try {
+        var list = await Decorate.find({ cate_cateringId: req.params.cateringId });
+        res.status(200).json({ status: true, data: list });
+    } catch (err) {
+        res.status(400).json({ status: false, message: "Thất Bại" });
+    }
+});
+
 module.exports = router;
 
