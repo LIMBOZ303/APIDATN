@@ -305,20 +305,24 @@ router.delete('/:planId', async (req, res) => {
 
 
 // Tìm kiếm Plan theo planprice
-router.get('/price/', async (req, res) => {
+router.get('/price', async (req, res) => {
     try {
         const { minPrice, maxPrice } = req.query;
 
-        // Tạo bộ lọc dựa theo giá (có thể chỉ định minPrice, maxPrice hoặc cả hai)
+        // Khởi tạo bộ lọc tìm kiếm
         const filter = {};
-        if (minPrice) filter.planprice = { $gte: parseFloat(minPrice) };
-        if (maxPrice) {
-            filter.planprice = filter.planprice ? 
-                { ...filter.planprice, $lte: parseFloat(maxPrice) } : 
-                { $lte: parseFloat(maxPrice) };
+
+        // Xử lý minPrice và maxPrice nếu có
+        if (minPrice && !isNaN(minPrice)) filter.planprice = { $gte: parseFloat(minPrice) };
+        if (maxPrice && !isNaN(maxPrice)) {
+            if (filter.planprice) {
+                filter.planprice.$lte = parseFloat(maxPrice);
+            } else {
+                filter.planprice = { $lte: parseFloat(maxPrice) };
+            }
         }
 
-        // Tìm kiếm các Plan thỏa mãn điều kiện
+        // Tìm các Plan phù hợp với điều kiện lọc
         const plans = await Plan.find(filter);
 
         res.status(200).json({ plans });
