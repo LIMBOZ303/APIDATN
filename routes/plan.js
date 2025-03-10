@@ -304,5 +304,29 @@ router.delete('/:planId', async (req, res) => {
 });
 
 
+// Tìm kiếm Plan theo planprice
+router.get('/price/', async (req, res) => {
+    try {
+        const { minPrice, maxPrice } = req.query;
+
+        // Tạo bộ lọc dựa theo giá (có thể chỉ định minPrice, maxPrice hoặc cả hai)
+        const filter = {};
+        if (minPrice) filter.planprice = { $gte: parseFloat(minPrice) };
+        if (maxPrice) {
+            filter.planprice = filter.planprice ? 
+                { ...filter.planprice, $lte: parseFloat(maxPrice) } : 
+                { $lte: parseFloat(maxPrice) };
+        }
+
+        // Tìm kiếm các Plan thỏa mãn điều kiện
+        const plans = await Plan.find(filter);
+
+        res.status(200).json({ plans });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+
 
 module.exports = router;
