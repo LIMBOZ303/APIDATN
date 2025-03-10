@@ -311,7 +311,6 @@ router.get('/price', async (req, res) => {
 
         // Khởi tạo bộ lọc tìm kiếm
         const filter = {};
-
         // Xử lý minPrice và maxPrice nếu có
         if (minPrice && !isNaN(minPrice)) filter.planprice = { $gte: parseFloat(minPrice) };
         if (maxPrice && !isNaN(maxPrice)) {
