@@ -311,25 +311,23 @@ router.get('/price', async (req, res) => {
 
         // Khởi tạo bộ lọc tìm kiếm
         const filter = {};
+
         // Xử lý minPrice và maxPrice nếu có
         if (minPrice && !isNaN(minPrice)) filter.planprice = { $gte: parseFloat(minPrice) };
         if (maxPrice && !isNaN(maxPrice)) {
-            if (filter.planprice) {
-                filter.planprice.$lte = parseFloat(maxPrice);
-            } else {
-                filter.planprice = { $lte: parseFloat(maxPrice) };
-            }
+            filter.planprice = filter.planprice ? 
+                { ...filter.planprice, $lte: parseFloat(maxPrice) } : 
+                { $lte: parseFloat(maxPrice) };
         }
 
         // Tìm các Plan phù hợp với điều kiện lọc
         const plans = await Plan.find(filter);
 
-        res.status(200).json({ plans });
+        // Trả về dữ liệu JSON với thông báo rõ ràng
+        res.status(200).json({ message: 'Lấy dữ liệu thành công', plans });
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ message: 'Lỗi server', error: error.message });
     }
 });
-
-
 
 module.exports = router;
