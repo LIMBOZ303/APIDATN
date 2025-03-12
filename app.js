@@ -15,7 +15,7 @@ var cate_decorateRouter = require('./routes/cate_decorate')
 var cate_presentRouter = require('./routes/cate_present')
 var decorateRouter = require('./routes/decorate')
 var presentRouter = require('./routes/present')
-
+var favorteRouter = require('./routes/Favorite')
 var app = express();
 app.use(express.json());//xử lý json
 
@@ -40,6 +40,7 @@ app.use('/cate_decorate', cate_decorateRouter)
 app.use('/cate_present', cate_presentRouter)
 app.use('/decorate', decorateRouter)
 app.use('/present', presentRouter)
+app.use('/favorite', favorteRouter)
 
 
 // mongoose.connect('mongodb://localhost:27017/userDB')

@@ -330,4 +330,49 @@ router.get('/price', async (req, res) => {
     }
 });
 
+//planPrice = totalPrice, soLuongKhach = sanhID.SoluongKhach
+router.get('/khaosat', async (req, res) => {
+    try {
+        const { minPrice, maxPrice, soluongkhach, dateevent } = req.query;
+
+        // Khởi tạo bộ lọc tìm kiếm
+        const filter = {};
+
+        // Lọc theo khoảng giá từ `Totalprice`
+        if (minPrice && !isNaN(minPrice)) {
+            filter.totalprice = { $gte: parseFloat(minPrice) };
+        }
+        if (maxPrice && !isNaN(maxPrice)) {
+            filter.totalprice = filter.totalprice
+                ? { ...filter.totalprice, $lte: parseFloat(maxPrice) }
+                : { $lte: parseFloat(maxPrice) };
+        }
+
+        // Lọc theo ngày tổ chức (các plan có ngày tổ chức sau ngày khảo sát)
+        if (dateevent) {
+            const eventDate = new Date(dateevent);
+            if (!isNaN(eventDate.getTime())) {
+                filter.plandateevent = { $gte: eventDate };
+            }
+        }
+
+        // Lấy danh sách Plan và populate thêm thông tin Sảnh
+        const plans = await Plan.find(filter)
+            .populate({
+                path: 'SanhId',
+                select: 'name price SoLuongKhach',
+                match: { SoLuongKhach: { $lte: parseInt(soluongkhach) } } // Lọc số lượng khách từ SanhId
+            })
+            .populate('UserId', 'name email');
+
+        // Lọc bỏ những kế hoạch không có `SanhId` phù hợp (do `match`)
+        const filteredPlans = plans.filter(plan => plan.SanhId !== null);
+
+        res.status(200).json({ status: true, message: 'Lấy danh sách kế hoạch thành công', data: filteredPlans });
+    } catch (error) {
+        res.status(500).json({ status: false, message: 'Lỗi server', error: error.message });
+    }
+});
+
+
 module.exports = router;

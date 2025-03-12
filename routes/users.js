@@ -95,4 +95,38 @@ router.post("/login", async function (req, res) {
   }
 });
 
+router.get('/favorite/:userId', async (req, res) => {
+  try {
+      const { userId } = req.params;
+
+      const user = await User.findById(userId)
+          .populate({
+              path: 'Catering_orders',
+              populate: { path: 'CateringId' } // Populate từ bảng trung gian đến Catering
+          })
+          .populate({
+              path: 'Decorate_orders',
+              populate: { path: 'DecorateId' } // Populate từ bảng trung gian đến Decorate
+          })
+          .populate({
+              path: 'Lobby_orders',
+              populate: { path: 'LobbyId' } // Populate từ bảng trung gian đến Sanh
+          })
+          .populate({
+              path: 'Present_orders',
+              populate: { path: 'PresentId' } // Populate từ bảng trung gian đến Present
+          });
+
+      if (!user) {
+          return res.status(404).json({ status: false, message: "Không tìm thấy user" });
+      }
+
+      res.status(200).json({ status: true, message: "Lấy thông tin user thành công", data: user });
+  } catch (error) {
+      res.status(500).json({ status: false, message: "Lỗi server", error: error.message });
+  }
+});
+
+
+
 module.exports = router;
