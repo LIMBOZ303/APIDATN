@@ -53,7 +53,6 @@ router.delete('/delete/:userId', async (req, res) => {
         const { userId } = req.params;
         const { type, itemId } = req.query;
 
-        // Định nghĩa model và field tương ứng
         const models = {
             Catering: { model: require('../models/ListOrder/Catering_order'), field: 'Catering_orders' },
             Decorate: { model: require('../models/ListOrder/Decorate_order'), field: 'Decorate_orders' },
@@ -61,28 +60,29 @@ router.delete('/delete/:userId', async (req, res) => {
             Present: { model: require('../models/ListOrder/Present_order'), field: 'Present_orders' },
         };
 
-        // Kiểm tra type hợp lệ
         if (!models[type]) {
             return res.status(400).json({ status: false, message: "Loại không hợp lệ" });
         }
 
         const { model: orderModel, field: orderField } = models[type];
 
-        // Xóa bản ghi trong bảng trung gian
+        console.log(`Tìm xóa: type=${type}, ${type.toLowerCase()}Id=${itemId}, UserId=${userId}`);
+
         const order = await orderModel.findOneAndDelete({
             [`${type.toLowerCase()}Id`]: new ObjectId(itemId),
             UserId: new ObjectId(userId),
         });
 
         if (!order) {
+            console.log(`Không tìm thấy bản ghi trong ${type}_order với ${type.toLowerCase()}Id=${itemId} và UserId=${userId}`);
             return res.status(404).json({ status: false, message: "Không tìm thấy mục yêu thích để xóa" });
         }
 
-        // Xóa tham chiếu trong User
         await User.findByIdAndUpdate(userId, { $pull: { [orderField]: order._id } });
 
         res.status(200).json({ status: true, message: "Đã xóa khỏi danh sách yêu thích" });
     } catch (error) {
+        console.error("Lỗi server khi xóa:", error.message);
         res.status(500).json({ status: false, message: "Lỗi server", error: error.message });
     }
 });
