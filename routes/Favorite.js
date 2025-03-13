@@ -53,7 +53,6 @@ router.delete('/delete/:userId', async (req, res) => {
         const { userId } = req.params;
         const { type, itemId } = req.query;
 
-        // Định nghĩa model và field tương ứng
         const models = {
             Catering: { model: require('../models/ListOrder/Catering_order'), field: 'Catering_orders' },
             Decorate: { model: require('../models/ListOrder/Decorate_order'), field: 'Decorate_orders' },
@@ -61,46 +60,51 @@ router.delete('/delete/:userId', async (req, res) => {
             Present: { model: require('../models/ListOrder/Present_order'), field: 'Present_orders' },
         };
 
-        // Kiểm tra type hợp lệ
         if (!models[type]) {
             return res.status(400).json({ status: false, message: "Loại không hợp lệ" });
         }
 
         const { model: orderModel, field: orderField } = models[type];
 
-        // Chuyển đổi itemId và userId thành ObjectId
-        const orderIdCondition = new ObjectId(itemId);
+        const orderIdCondition = new ObjectId(itemId); // itemId là _id của present_order
         const userIdCondition = new ObjectId(userId);
 
-        // Log để debug
-        console.log(`Tìm xóa: type=${type}, ${type}Id=${itemId}, UserId=${userId}`);
+        console.log(`Tìm xóa: type=${type}, _id=${itemId}, UserId=${userId}`);
 
-        // Xóa bản ghi khỏi bảng trung gian (Present_order, ...)
+        // Xóa bản ghi dựa trên _id và UserId
         const order = await orderModel.findOneAndDelete({
-            [`${type}Id`]: orderIdCondition, // PresentId
+            _id: orderIdCondition,
             UserId: userIdCondition,
         });
 
         if (!order) {
-            console.log(`Không tìm thấy bản ghi trong ${type}_order với ${type}Id=${itemId} và UserId=${userId}`);
-            return res.status(404).json({ status: false, message: "Không tìm thấy mục yêu thích" });
+            console.log(`Không tìm thấy bản ghi với _id=${itemId} và UserId=${userId}`);
+            // Làm mới danh sách ngay cả khi không tìm thấy
         }
 
-        // Xóa tham chiếu trong User
-        const updatedUser = await User.findByIdAndUpdate(
-            userIdCondition,
-            { $pull: { [orderField]: order._id } },
-            { new: true }
-        );
+        // Cập nhật User
+        await User.findByIdAndUpdate(userIdCondition, { $pull: { [orderField]: order?._id } });
 
-        if (!updatedUser) {
-            console.warn(`Không tìm thấy User với ID=${userId}`);
+        // Lấy danh sách yêu thích mới
+        const user = await User.findById(userIdCondition).populate(orderField);
+        if (!user) {
+            return res.status(404).json({ status: false, message: "Không tìm thấy người dùng" });
         }
+
+        const favorites = user[orderField] || [];
+        const formattedFavorites = favorites.map(order => ({
+            type: type,
+            itemId: order._id.toString(),
+            _id: order._id.toString(),
+            image: order[`${type}Id`]?.image || 'https://via.placeholder.com/80',
+            name: order[`${type}Id`]?.name || 'Không có tên',
+            price: order[`${type}Id`]?.price || 0,
+        }));
 
         res.status(200).json({
             status: true,
-            message: "Đã xóa khỏi danh sách yêu thích",
-            deletedId: order._id.toString(),
+            message: order ? "Đã xóa khỏi danh sách yêu thích" : "Mục không tồn tại, trả về danh sách mới",
+            data: formattedFavorites,
         });
     } catch (error) {
         console.error("Lỗi server khi xóa:", error.message);
