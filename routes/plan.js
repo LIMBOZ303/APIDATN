@@ -331,42 +331,42 @@ router.get('/price', async (req, res) => {
 });
 
 //planPrice = totalPrice, soLuongKhach = sanhID.SoluongKhach
-app.get('/khaosat', async (req, res) => {
-    try {
-        const { planprice, plansoluongkhach, plandateevent } = req.query;
+// app.get('/khaosat', async (req, res) => {
+//     try {
+//         const { planprice, plansoluongkhach, plandateevent } = req.query;
 
-        let filter = {};
+//         let filter = {};
 
-        // Lọc theo giá tiền (totalPrice)
-        if (planprice && !isNaN(planprice)) {
-            filter.totalPrice = { $lte: parseFloat(planprice) };
-        }
+//         // Lọc theo giá tiền (totalPrice)
+//         if (planprice && !isNaN(planprice)) {
+//             filter.totalPrice = { $lte: parseFloat(planprice) };
+//         }
 
-        // Lọc theo ngày sự kiện (planDateEvent)
-        if (plandateevent) {
-            filter.dateEvent = plandateevent; // Định dạng ngày cần trùng khớp
-        }
+//         // Lọc theo ngày sự kiện (planDateEvent)
+//         if (plandateevent) {
+//             filter.dateEvent = plandateevent; // Định dạng ngày cần trùng khớp
+//         }
 
-        // Lọc các Plan phù hợp
-        let plans = await Plan.find(filter)
-            .populate({
-                path: 'SanhId',
-                select: 'name price SoLuongKhach',
-            })
-            .populate('UserId', 'name email');
+//         // Lọc các Plan phù hợp
+//         let plans = await Plan.find(filter)
+//             .populate({
+//                 path: 'SanhId',
+//                 select: 'name price SoLuongKhach',
+//             })
+//             .populate('UserId', 'name email');
 
-        // Lọc theo số lượng khách (sau khi populate xong)
-        if (plansoluongkhach && !isNaN(plansoluongkhach)) {
-            plans = plans.filter(plan => 
-                plan.SanhId && plan.SanhId.SoLuongKhach >= parseInt(plansoluongkhach)
-            );
-        }
+//         // Lọc theo số lượng khách (sau khi populate xong)
+//         if (plansoluongkhach && !isNaN(plansoluongkhach)) {
+//             plans = plans.filter(plan => 
+//                 plan.SanhId && plan.SanhId.SoLuongKhach >= parseInt(plansoluongkhach)
+//             );
+//         }
 
-        res.status(200).json(plans);
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-});
+//         res.status(200).json(plans);
+//     } catch (error) {
+//         res.status(500).json({ error: error.message });
+//     }
+// });
 
 
 
