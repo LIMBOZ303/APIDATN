@@ -46,61 +46,43 @@ router.post('/add/:userId', async (req, res) => {
     }
 });
 
+const { ObjectId } = require('mongoose').Types;
+
 router.delete('/delete/:userId', async (req, res) => {
     try {
         const { userId } = req.params;
         const { type, itemId } = req.query;
 
-        let orderModel, orderField;
-        switch (type) {
-            case 'Catering':
-                orderModel = require('../models/ListOrder/Catering_order');
-                orderField = 'Catering_orders';
-                break;
-            case 'Decorate':
-                orderModel = require('../models/ListOrder/Decorate_order');
-                orderField = 'Decorate_orders';
-                break;
-            case 'Sanh':
-                orderModel = require('../models/ListOrder/Lobby_order');
-                orderField = 'Lobby_orders';
-                break;
-            case 'Present':
-                orderModel = require('../models/ListOrder/Present_order');
-                orderField = 'Present_orders';
-                break;
-            default:
-                return res.status(400).json({ status: false, message: "Loại không hợp lệ" });
+        // Định nghĩa model và field tương ứng
+        const models = {
+            Catering: { model: require('../models/ListOrder/Catering_order'), field: 'Catering_orders' },
+            Decorate: { model: require('../models/ListOrder/Decorate_order'), field: 'Decorate_orders' },
+            Sanh: { model: require('../models/ListOrder/Lobby_order'), field: 'Lobby_orders' },
+            Present: { model: require('../models/ListOrder/Present_order'), field: 'Present_orders' },
+        };
+
+        // Kiểm tra type hợp lệ
+        if (!models[type]) {
+            return res.status(400).json({ status: false, message: "Loại không hợp lệ" });
         }
 
-        // Chuẩn hóa type và chuyển itemId, userId thành ObjectId
-        const normalizedType = type.charAt(0).toLowerCase() + type.slice(1).toLowerCase();
-        console.log(`Tìm xóa: type=${type}, ${normalizedType}Id=${itemId}, UserId=${userId}`);
+        const { model: orderModel, field: orderField } = models[type];
 
+        // Xóa bản ghi trong bảng trung gian
         const order = await orderModel.findOneAndDelete({
-            [`${normalizedType}Id`]: new ObjectId(itemId),
-            UserId: new ObjectId(userId)
+            [`${type.toLowerCase()}Id`]: new ObjectId(itemId),
+            UserId: new ObjectId(userId),
         });
 
         if (!order) {
             return res.status(404).json({ status: false, message: "Không tìm thấy mục yêu thích để xóa" });
         }
 
-        // Kiểm tra và xóa tham chiếu trong User
-        const updatedUser = await User.findById(userId);
-        if (!updatedUser || !updatedUser[orderField].includes(order._id)) {
-            console.warn(`Tham chiếu ${order._id} không tồn tại trong ${orderField} của user ${userId}`);
-        }
+        // Xóa tham chiếu trong User
         await User.findByIdAndUpdate(userId, { $pull: { [orderField]: order._id } });
 
-        console.log(`Xóa thành công: orderId=${order._id}, userId=${userId}, orderField=${orderField}`);
-        res.status(200).json({
-            status: true,
-            message: "Đã xóa khỏi danh sách yêu thích",
-            deletedId: order._id.toString()
-        });
+        res.status(200).json({ status: true, message: "Đã xóa khỏi danh sách yêu thích" });
     } catch (error) {
-        console.error("Lỗi khi xóa mục yêu thích:", error.message);
         res.status(500).json({ status: false, message: "Lỗi server", error: error.message });
     }
 });
