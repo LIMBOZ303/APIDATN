@@ -49,7 +49,7 @@ router.post('/add/:userId', async (req, res) => {
 router.delete('/delete/:userId', async (req, res) => {
     try {
         const { userId } = req.params;
-        const { type, itemId } = req.body;
+        const { type, itemId } = req.query;
 
         let orderModel, orderField;
         switch (type) {
