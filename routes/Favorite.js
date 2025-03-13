@@ -48,46 +48,50 @@ router.post('/add/:userId', async (req, res) => {
 
 router.delete('/delete/:userId', async (req, res) => {
     try {
-        const { userId } = req.params;
-        const { type, itemId } = req.body;
-
-        let orderModel, orderField;
-        switch (type) {
-            case 'Catering':
-                orderModel = require('../models/ListOrder/Catering_order');
-                orderField = 'Catering_orders';
-                break;
-            case 'decorate':
-                orderModel = require('../models/ListOrder/Decorate_order');
-                orderField = 'Decorate_orders';
-                break;
-            case 'Sanh':
-                orderModel = require('../models/ListOrder/Lobby_order');
-                orderField = 'Lobby_orders';
-                break;
-            case 'present':
-                orderModel = require('../models/ListOrder/Present_order');
-                orderField = 'Present_orders';
-                break;
-            default:
-                return res.status(400).json({ status: false, message: "Loại không hợp lệ" });
-        }
-
-        // Xóa bản ghi khỏi bảng trung gian
-        const order = await orderModel.findOneAndDelete({ [`${type}Id`]: itemId, UserId: userId });
-
-        if (!order) {
-            return res.status(404).json({ status: false, message: "Không tìm thấy mục yêu thích" });
-        }
-
-        // Xóa khỏi danh sách trong User
-        await User.findByIdAndUpdate(userId, { $pull: { [orderField]: order._id } });
-
-        res.status(200).json({ status: true, message: "Đã xóa khỏi danh sách yêu thích" });
+      const { userId } = req.params;
+      const { type, itemId } = req.query; // Lấy type và itemId từ query
+  
+      let orderModel, orderField;
+      switch (type) {
+        case 'Catering':
+          orderModel = require('../models/ListOrder/Catering_order');
+          orderField = 'Catering_orders';
+          break;
+        case 'Decorate':
+          orderModel = require('../models/ListOrder/Decorate_order');
+          orderField = 'Decorate_orders';
+          break;
+        case 'Sanh':
+          orderModel = require('../models/ListOrder/Lobby_order');
+          orderField = 'Lobby_orders';
+          break;
+        case 'Present':
+          orderModel = require('../models/ListOrder/Present_order');
+          orderField = 'Present_orders';
+          break;
+        case 'Gift':
+          orderModel = require('../models/ListOrder/Present_order');
+          orderField = 'Present_orders';
+          break;
+        default:
+          return res.status(400).json({ status: false, message: "Loại không hợp lệ" });
+      }
+  
+      // Tìm và xóa bản ghi trong bảng trung gian
+      const order = await orderModel.findOneAndDelete({ [`${type}Id`]: itemId, UserId: userId });
+  
+      if (!order) {
+        return res.status(404).json({ status: false, message: "Không tìm thấy mục yêu thích để xóa" });
+      }
+  
+      // Xóa tham chiếu trong User
+      await User.findByIdAndUpdate(userId, { $pull: { [orderField]: order._id } });
+  
+      res.status(200).json({ status: true, message: "Đã xóa khỏi danh sách yêu thích" });
     } catch (error) {
-        res.status(500).json({ status: false, message: "Lỗi server", error: error.message });
+      res.status(500).json({ status: false, message: "Lỗi server", error: error.message });
     }
-});
+  });
 
 
 //lấy danh sách theo UserId
