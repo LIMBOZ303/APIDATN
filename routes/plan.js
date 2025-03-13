@@ -7,6 +7,10 @@ const Plan_catering = require('../models/PlanWith/Plan-Catering')
 const Plan_decorate = require('../models/PlanWith/Plan-Decorate')
 const Plan_present = require('../models/PlanWith/Plan-Present')
 const cate_catering = require('../models/Cate/cate_cateringModel')
+const decorate = require('../models/decorateModel')
+const catering = require('../models/cateringModel')
+const present = require('../models/presentModel')
+
 
 router.post('/add', async (req, res) => {
     try {
@@ -331,42 +335,78 @@ router.get('/price', async (req, res) => {
 });
 
 //planPrice = totalPrice, soLuongKhach = sanhID.SoluongKhach
-// app.get('/khaosat', async (req, res) => {
-//     try {
-//         const { planprice, plansoluongkhach, plandateevent } = req.query;
+router.post('/khaosat', async (req, res) => {
+    try {
+        const { planprice, plansoluongkhach } = req.body;
 
-//         let filter = {};
+        let filter = {};
 
-//         // Lọc theo giá tiền (totalPrice)
-//         if (planprice && !isNaN(planprice)) {
-//             filter.totalPrice = { $lte: parseFloat(planprice) };
-//         }
+        if (planprice && !isNaN(planprice)) {
+            filter.totalPrice = { $lte: parseFloat(planprice) };
+        }
+        
 
-//         // Lọc theo ngày sự kiện (planDateEvent)
-//         if (plandateevent) {
-//             filter.dateEvent = plandateevent; // Định dạng ngày cần trùng khớp
-//         }
+        let plans = await Plan.find(filter)
+            .populate('SanhId') // Populate sảnh
+            .populate('UserId', 'name email'); // Populate người dùng
 
-//         // Lọc các Plan phù hợp
-//         let plans = await Plan.find(filter)
-//             .populate({
-//                 path: 'SanhId',
-//                 select: 'name price SoLuongKhach',
-//             })
-//             .populate('UserId', 'name email');
+        if (plansoluongkhach && !isNaN(plansoluongkhach)) {
+            plans = plans.filter(plan => 
+                plan.SanhId && plan.SanhId.SoLuongKhach >= parseInt(plansoluongkhach)
+            );
+        }
 
-//         // Lọc theo số lượng khách (sau khi populate xong)
-//         if (plansoluongkhach && !isNaN(plansoluongkhach)) {
-//             plans = plans.filter(plan => 
-//                 plan.SanhId && plan.SanhId.SoLuongKhach >= parseInt(plansoluongkhach)
-//             );
-//         }
+        // Lấy dịch vụ từ bảng trung gian
+        const populatedPlans = await Promise.all(plans.map(async (plan) => {
+            const caterings = await Plan_catering.find({ PlanId: plan._id })
+                .populate({
+                    path: 'CateringId',
+                    populate: {
+                        path: 'cate_cateringId',
+                        select: 'name'
+                    }
+                });
 
-//         res.status(200).json(plans);
-//     } catch (error) {
-//         res.status(500).json({ error: error.message });
-//     }
-// });
+            const decorates = await Plan_decorate.find({ PlanId: plan._id })
+                .populate({
+                    path: 'DecorateId',
+                    populate: {
+                        path: 'Cate_decorateId',
+                        select: 'name'
+                    }
+                });
+
+            const presents = await Plan_present.find({ PlanId: plan._id })
+                .populate({
+                    path: 'PresentId',
+                    populate: {
+                        path: 'Cate_presentId',
+                        select: 'name'
+                    }
+                });
+
+            return {
+                ...plan.toObject(),
+                caterings: caterings.map(item => item.CateringId),
+                decorates: decorates.map(item => item.DecorateId),
+                presents: presents.map(item => item.PresentId)
+            };
+        }));
+
+        res.status(200).json({
+            status: true,
+            message: "Lấy danh sách kế hoạch thành công",
+            data: populatedPlans
+        });
+
+    } catch (error) {
+        console.error("Lỗi:", error);
+        res.status(500).json({ status: false, error: error.message });
+    }
+});
+
+
+
 
 
 
