@@ -46,7 +46,8 @@ router.post('/add/:userId', async (req, res) => {
     }
 });
 
-router.delete('/delete/:userId', async (req, res) => {
+router.delete('/delete/:userId'
+    , async (req, res) => {
     try {
       const { userId } = req.params;
       const { type, itemId } = req.query; // Lấy type và itemId từ query
