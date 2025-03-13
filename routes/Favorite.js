@@ -18,7 +18,7 @@ router.post('/add/:userId', async (req, res) => {
                 orderModel = require('../models/ListOrder/Catering_order');
                 orderField = 'Catering_orders';
                 break;
-            case 'decorate':
+            case 'Decorate':
                 orderModel = require('../models/ListOrder/Decorate_order');
                 orderField = 'Decorate_orders';
                 break;
@@ -26,7 +26,7 @@ router.post('/add/:userId', async (req, res) => {
                 orderModel = require('../models/ListOrder/Lobby_order');
                 orderField = 'Lobby_orders';
                 break;
-            case 'present':
+            case 'Present':
                 orderModel = require('../models/ListOrder/Present_order');
                 orderField = 'Present_orders';
                 break;
@@ -67,10 +67,6 @@ router.delete('/delete/:userId'
           orderField = 'Lobby_orders';
           break;
         case 'Present':
-          orderModel = require('../models/ListOrder/Present_order');
-          orderField = 'Present_orders';
-          break;
-        case 'Gift':
           orderModel = require('../models/ListOrder/Present_order');
           orderField = 'Present_orders';
           break;
