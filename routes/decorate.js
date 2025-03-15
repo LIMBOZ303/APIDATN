@@ -106,4 +106,13 @@ router.get("/decorates/:cateId", async function (req, res) {
     }
 });
 
+router.get("/:Id", async function (req, res) {
+    try {
+        var list = await Decorate.find({ _id: req.params.Id });
+        res.status(200).json({ status: true, data: list });
+    } catch (err) {
+        res.status(400).json({ status: false, message: "Thất Bại" });
+    }
+});
+
 module.exports = router;
