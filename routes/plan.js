@@ -186,6 +186,7 @@ router.put('/update/:id', async (req, res) => {
         const planId = req.params.id;
         const updateData = req.body;
         const userId = updateData.UserId;
+        const forceDuplicate = updateData.forceDuplicate || false;
 
         // Tìm kế hoạch cũ theo ID
         const oldPlan = await Plan.findById(planId);
@@ -193,8 +194,8 @@ router.put('/update/:id', async (req, res) => {
             return res.status(404).json({ status: false, message: "Không tìm thấy kế hoạch" });
         }
 
-        // Nếu UserId trùng với kế hoạch cũ, cập nhật trực tiếp
-        if (oldPlan.UserId.toString() === userId) {
+        // Nếu không có forceDuplicate và UserId trùng với kế hoạch cũ, cập nhật trực tiếp
+        if (!forceDuplicate && oldPlan.UserId.toString() === userId) {
             Object.assign(oldPlan, {
                 SanhId: updateData.SanhId || oldPlan.SanhId,
                 totalPrice: updateData.totalPrice || oldPlan.totalPrice,
@@ -208,12 +209,12 @@ router.put('/update/:id', async (req, res) => {
             });
         }
 
-        // Nếu User khác, tạo kế hoạch mới
+        // Nếu có forceDuplicate hoặc User khác, tạo kế hoạch mới
         const newPlan = await Plan.create({
             UserId: userId,
-            SanhId: updateData.SanhId || oldPlan.SanhId,
-            totalPrice: updateData.totalPrice || oldPlan.totalPrice,
-            status: updateData.status || oldPlan.status
+            SanhId: oldPlan.SanhId,
+            totalPrice: oldPlan.totalPrice,
+            status: oldPlan.status
         });
 
         // Hàm sao chép dịch vụ từ kế hoạch cũ sang kế hoạch mới
@@ -234,7 +235,7 @@ router.put('/update/:id', async (req, res) => {
 
         res.status(200).json({
             status: true,
-            message: "Đã tạo kế hoạch mới cho User",
+            message: "Đã tạo kế hoạch sao chép",
             data: newPlan
         });
     } catch (error) {
