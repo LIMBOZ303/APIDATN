@@ -197,6 +197,7 @@ router.put('/update/:id', async (req, res) => {
         // Nếu không có forceDuplicate và UserId trùng với kế hoạch cũ, cập nhật trực tiếp
         if (!forceDuplicate && oldPlan.UserId.toString() === userId) {
             Object.assign(oldPlan, {
+                UserId: updateData.UserId || oldPlan.UserId,
                 SanhId: updateData.SanhId || oldPlan.SanhId,
                 totalPrice: updateData.totalPrice || oldPlan.totalPrice,
                 status: updateData.status || oldPlan.status,
