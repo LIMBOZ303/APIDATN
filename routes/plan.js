@@ -199,7 +199,11 @@ router.put('/update/:id', async (req, res) => {
             Object.assign(oldPlan, {
                 SanhId: updateData.SanhId || oldPlan.SanhId,
                 totalPrice: updateData.totalPrice || oldPlan.totalPrice,
-                status: updateData.status || oldPlan.status
+                status: updateData.status || oldPlan.status,
+                plandateevent: updateData.plandateevent || oldPlan.plandateevent, // Thêm trường bắt buộc
+                plansoluongkhach: updateData.plansoluongkhach || oldPlan.plansoluongkhach, // Thêm trường bắt buộc
+                name: updateData.name || oldPlan.name, // Nếu cần
+                planprice: updateData.planprice || oldPlan.planprice, // Nếu cần
             });
             await oldPlan.save();
             return res.status(200).json({
@@ -209,12 +213,16 @@ router.put('/update/:id', async (req, res) => {
             });
         }
 
-        // Nếu có forceDuplicate hoặc User khác, tạo kế hoạch mới
+        // Nếu có forceDuplicate hoặc User khác, tạo kế hoạch mới với dữ liệu đầy đủ từ oldPlan
         const newPlan = await Plan.create({
             UserId: userId,
             SanhId: oldPlan.SanhId,
             totalPrice: oldPlan.totalPrice,
-            status: oldPlan.status
+            status: oldPlan.status,
+            plandateevent: oldPlan.plandateevent, // Sao chép trường bắt buộc
+            plansoluongkhach: oldPlan.plansoluongkhach, // Sao chép trường bắt buộc
+            name: oldPlan.name, // Sao chép nếu cần
+            planprice: oldPlan.planprice, // Sao chép nếu cần
         });
 
         // Hàm sao chép dịch vụ từ kế hoạch cũ sang kế hoạch mới
@@ -230,7 +238,7 @@ router.put('/update/:id', async (req, res) => {
             copyServices(Plan_catering, Plan_catering, 'CateringId'),
             copyServices(Plan_decorate, Plan_decorate, 'DecorateId'),
             copyServices(Plan_present, Plan_present, 'PresentId'),
-            copyServices(Plan_lobby, Plan_lobby, 'SanhId') // Sử dụng Plan_lobby thay vì Lobby_order
+            copyServices(Plan_lobby, Plan_lobby, 'SanhId')
         ]);
 
         res.status(200).json({
@@ -243,8 +251,6 @@ router.put('/update/:id', async (req, res) => {
         res.status(500).json({ status: false, message: "Lỗi khi cập nhật kế hoạch", error: error.message });
     }
 });
-
-
 
 
 // Lấy danh sách kế hoạch theo UserId
