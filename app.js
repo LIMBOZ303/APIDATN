@@ -16,14 +16,18 @@ var cate_presentRouter = require('./routes/cate_present')
 var decorateRouter = require('./routes/decorate')
 var presentRouter = require('./routes/present')
 var favorteRouter = require('./routes/Favorite')
+var authRouter = require('./routes/auth')
 var app = express();
 app.use(express.json());//xử lý json
+const cors = require('cors');
+require('dotenv').config();
 
 // view engine setup
 app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'hbs');
 
 app.use(logger('dev'));
+app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
@@ -41,6 +45,7 @@ app.use('/cate_present', cate_presentRouter)
 app.use('/decorate', decorateRouter)
 app.use('/present', presentRouter)
 app.use('/favorite', favorteRouter)
+app.use('/auth', authRouter)
 
 
 // mongoose.connect('mongodb://localhost:27017/userDB')
