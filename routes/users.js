@@ -52,17 +52,17 @@ router.get('/all', async (req, res) => {
 
 //register user
 //http://localhost:2025/users/register
-router.post('/register', async (req, res) => {
-  const { name, email, password, phone, address, role, avatar } = req.body;
+// router.post('/register', async (req, res) => {
+//   const { name, email, password, phone, address, role, avatar } = req.body;
   
-  try {
-    const newUser = new User ({name, email, password, phone, address, role, avatar});
-    await newUser.save();
-    res.status(201).send('User created successfully');
-  } catch (error) {
-    res.status(400).send('Error creating user');
-  }
-});
+//   try {
+//     const newUser = new User ({name, email, password, phone, address, role, avatar});
+//     await newUser.save();
+//     res.status(201).send('User created successfully');
+//   } catch (error) {
+//     res.status(400).send('Error creating user');
+//   }
+// });
 
 //login user
 //http://localhost:2025/users/login

@@ -8,7 +8,8 @@ const userSchema = new mongoose.Schema({
    address: { type: String },
    role: { type: String, default: 'user' },
    avatar: { type: String, default: 'https://via.placeholder.com/150' },
-
+   isVerified: { type: Boolean, default: false },
+   
    // Danh sách đơn hàng đã đặt
    Catering_orders: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Catering_order' }],
    Decorate_orders: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Decorate_order' }],
