@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const moment = require('moment');
 const Plan = require('../models/planModel');
 const Lobby = require('../models/Sanh');
 const User = require('../models/userModel');
@@ -357,41 +358,46 @@ router.delete('/:planId', async (req, res) => {
 });
 
 
-// Tìm kiếm Plan theo planprice
-router.get('/price', async (req, res) => {
+router.post("/search", async (req, res) => {
     try {
-        const { minPrice, maxPrice } = req.query;
+        const { budget, guests } = req.body;
+        const plans = await Plan.find({ budget: { $lte: budget }, guests: { $gte: guests } });
 
-        // Khởi tạo bộ lọc tìm kiếm
-        const filter = {};
+        const populatedPlans = await Promise.all(plans.map(async (plan) => {
+            const caterings = await CateringOrder.find({ PlanId: plan._id }).populate("CateringId", "name");
+            const decorates = await DecorateOrder.find({ PlanId: plan._id }).populate("DecorateId", "name");
+            const presents = await PresentOrder.find({ PlanId: plan._id }).populate("PresentId", "name");
 
-        // Xử lý minPrice và maxPrice nếu có
-        if (minPrice && !isNaN(minPrice)) filter.planprice = { $gte: parseFloat(minPrice) };
-        if (maxPrice && !isNaN(maxPrice)) {
-            filter.planprice = filter.planprice ? 
-                { ...filter.planprice, $lte: parseFloat(maxPrice) } : 
-                { $lte: parseFloat(maxPrice) };
-        }
+            return {
+                ...plan.toObject(),
+                caterings: caterings.map(item => item.CateringId),
+                decorates: decorates.map(item => item.DecorateId),
+                presents: presents.map(item => item.PresentId)
+            };
+        }));
 
-        // Tìm các Plan phù hợp với điều kiện lọc
-        const plans = await Plan.find(filter);
-
-        // Trả về dữ liệu JSON với thông báo rõ ràng
-        res.status(200).json({ message: 'Lấy dữ liệu thành công', plans });
+        res.status(200).json({ status: true, message: "Lấy danh sách kế hoạch phù hợp thành công", data: populatedPlans });
     } catch (error) {
-        res.status(500).json({ message: 'Lỗi server', error: error.message });
+        res.status(500).json({ status: false, message: "Lỗi khi tìm kế hoạch", error: error.message });
     }
 });
 
 //planPrice = totalPrice, soLuongKhach = sanhID.SoluongKhach
 router.post('/khaosat', async (req, res) => {
     try {
-        const { planprice, plansoluongkhach } = req.body;
+        const { planprice, plansoluongkhach, plandateevent } = req.body;
 
         let filter = {};
 
+        // Lọc theo giá
         if (planprice && !isNaN(planprice)) {
             filter.totalPrice = { $lte: parseFloat(planprice) };
+        }
+
+        // Chuyển đổi ngày từ dd/mm/yyyy sang ISODate để so sánh
+        if (plandateevent) {
+            const formattedDate = moment(plandateevent, 'DD/MM/YYYY').startOf('day').toDate();
+            filter.PlanDateEvent = { $ne: formattedDate }; // Lọc ra các ngày chưa có người đặt
         }
         
 
@@ -399,8 +405,9 @@ router.post('/khaosat', async (req, res) => {
             .populate('SanhId') // Populate sảnh
             .populate('UserId', 'name email'); // Populate người dùng
 
+        // Lọc theo số lượng khách
         if (plansoluongkhach && !isNaN(plansoluongkhach)) {
-            plans = plans.filter(plan => 
+            plans = plans.filter(plan =>
                 plan.SanhId && plan.SanhId.SoLuongKhach >= parseInt(plansoluongkhach)
             );
         }
@@ -453,6 +460,7 @@ router.post('/khaosat', async (req, res) => {
         res.status(500).json({ status: false, error: error.message });
     }
 });
+
 
 
 
