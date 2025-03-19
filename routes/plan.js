@@ -191,10 +191,10 @@ router.put('/update/:id', async (req, res) => {
   
       // Tìm kế hoạch cũ theo ID
       const oldPlan = await Plan.findById(planId)
-        .populate('SanhId') // Populate thông tin SanhId
-        .populate('caterings') // Populate caterings nếu có
-        .populate('decorates') // Populate decorates nếu có
-        .populate('presents'); // Populate presents nếu có
+        .populate('SanhId')
+        .populate('caterings')
+        .populate('decorates')
+        .populate('presents');
   
       if (!oldPlan) {
         return res.status(404).json({ status: false, message: "Không tìm thấy kế hoạch" });
@@ -202,6 +202,7 @@ router.put('/update/:id', async (req, res) => {
   
       // Nếu không có forceDuplicate và UserId trùng với kế hoạch cũ, cập nhật trực tiếp
       if (!forceDuplicate && oldPlan.UserId.toString() === userId) {
+        // Cập nhật các trường cơ bản của Plan
         Object.assign(oldPlan, {
           UserId: updateData.UserId || oldPlan.UserId,
           SanhId: updateData.SanhId || oldPlan.SanhId,
@@ -213,7 +214,36 @@ router.put('/update/:id', async (req, res) => {
           planprice: updateData.planprice || oldPlan.planprice,
         });
   
+        // Lưu các thay đổi cơ bản của Plan
         const updatedPlan = await oldPlan.save();
+  
+        // Cập nhật các dịch vụ (caterings, decorates, presents)
+        // Xóa các document cũ
+        await Promise.all([
+          Plan_catering.deleteMany({ PlanId: planId }),
+          Plan_decorate.deleteMany({ PlanId: planId }),
+          Plan_present.deleteMany({ PlanId: planId }),
+        ]);
+  
+        // Thêm các document mới từ updateData
+        const newCaterings = (updateData.caterings || []).map(cateringId => ({
+          PlanId: planId,
+          CateringId: cateringId,
+        }));
+        const newDecorates = (updateData.decorates || []).map(decorateId => ({
+          PlanId: planId,
+          DecorateId: decorateId,
+        }));
+        const newPresents = (updateData.presents || []).map(presentId => ({
+          PlanId: planId,
+          PresentId: presentId,
+        }));
+  
+        await Promise.all([
+          newCaterings.length > 0 ? Plan_catering.insertMany(newCaterings) : Promise.resolve(),
+          newDecorates.length > 0 ? Plan_decorate.insertMany(newDecorates) : Promise.resolve(),
+          newPresents.length > 0 ? Plan_present.insertMany(newPresents) : Promise.resolve(),
+        ]);
   
         // Populate lại dữ liệu trước khi trả về
         const populatedUpdatedPlan = await Plan.findById(updatedPlan._id)
@@ -229,35 +259,36 @@ router.put('/update/:id', async (req, res) => {
         });
       }
   
-      // Nếu có forceDuplicate hoặc User khác, tạo kế hoạch mới với dữ liệu đầy đủ từ oldPlan
+      // Nếu có forceDuplicate hoặc User khác, tạo kế hoạch mới
       const newPlan = await Plan.create({
         UserId: userId,
-        SanhId: oldPlan.SanhId._id, // Lấy ID từ SanhId đã populate
-        totalPrice: oldPlan.totalPrice,
-        status: oldPlan.status,
-        plandateevent: oldPlan.plandateevent,
-        plansoluongkhach: oldPlan.plansoluongkhach,
-        name: `Copy of ${oldPlan.name}`, // Thêm tiền tố để phân biệt
-        planprice: oldPlan.planprice,
+        SanhId: updateData.SanhId || oldPlan.SanhId._id, // Sử dụng dữ liệu từ updateData
+        totalPrice: updateData.totalPrice || oldPlan.totalPrice,
+        status: updateData.status || oldPlan.status,
+        plandateevent: updateData.plandateevent || oldPlan.plandateevent,
+        plansoluongkhach: updateData.plansoluongkhach || oldPlan.plansoluongkhach,
+        name: updateData.name ? `Copy of ${updateData.name}` : `Copy of ${oldPlan.name}`,
+        planprice: updateData.planprice || oldPlan.planprice,
       });
   
-      // Hàm sao chép dịch vụ từ kế hoạch cũ sang kế hoạch mới
-      const copyServices = async (oldModel, newModel, field) => {
-        const services = await oldModel.find({ PlanId: oldPlan._id });
-        if (services.length > 0) {
-          const newServices = services.map(service => ({
-            PlanId: newPlan._id,
-            [field]: service[field],
-          }));
-          await newModel.insertMany(newServices);
-        }
-      };
+      // Thêm các dịch vụ từ updateData
+      const newCaterings = (updateData.caterings || []).map(cateringId => ({
+        PlanId: newPlan._id,
+        CateringId: cateringId,
+      }));
+      const newDecorates = (updateData.decorates || []).map(decorateId => ({
+        PlanId: newPlan._id,
+        DecorateId: decorateId,
+      }));
+      const newPresents = (updateData.presents || []).map(presentId => ({
+        PlanId: newPlan._id,
+        PresentId: presentId,
+      }));
   
       await Promise.all([
-        copyServices(Plan_catering, Plan_catering, 'CateringId'),
-        copyServices(Plan_decorate, Plan_decorate, 'DecorateId'),
-        copyServices(Plan_present, Plan_present, 'PresentId'),
-        copyServices(Plan_lobby, Plan_lobby, 'SanhId'),
+        newCaterings.length > 0 ? Plan_catering.insertMany(newCaterings) : Promise.resolve(),
+        newDecorates.length > 0 ? Plan_decorate.insertMany(newDecorates) : Promise.resolve(),
+        newPresents.length > 0 ? Plan_present.insertMany(newPresents) : Promise.resolve(),
       ]);
   
       // Populate lại dữ liệu của newPlan trước khi trả về
