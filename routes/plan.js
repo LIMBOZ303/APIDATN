@@ -387,7 +387,9 @@ router.post('/khaosat', async (req, res) => {
     try {
         const { planprice, plansoluongkhach, plandateevent } = req.body;
 
-        let filter = {};
+        let filter = {
+            UserId: null, // Chỉ lấy các plan không có UserId (plan mặc định)
+        };
 
         // Lọc theo giá
         if (planprice && !isNaN(planprice)) {
@@ -399,11 +401,10 @@ router.post('/khaosat', async (req, res) => {
             const formattedDate = moment(plandateevent, 'DD/MM/YYYY').startOf('day').toDate();
             filter.PlanDateEvent = { $ne: formattedDate }; // Lọc ra các ngày chưa có người đặt
         }
-        
 
         let plans = await Plan.find(filter)
             .populate('SanhId') // Populate sảnh
-            .populate('UserId', 'name email'); // Populate người dùng
+            .populate('UserId', 'name email'); // Populate người dùng (sẽ là null cho plan mặc định)
 
         // Lọc theo số lượng khách
         if (plansoluongkhach && !isNaN(plansoluongkhach)) {
@@ -451,7 +452,7 @@ router.post('/khaosat', async (req, res) => {
 
         res.status(200).json({
             status: true,
-            message: "Lấy danh sách kế hoạch thành công",
+            message: "Lấy danh sách kế hoạch mặc định thành công",
             data: populatedPlans
         });
 
@@ -460,7 +461,6 @@ router.post('/khaosat', async (req, res) => {
         res.status(500).json({ status: false, error: error.message });
     }
 });
-
 
 
 
