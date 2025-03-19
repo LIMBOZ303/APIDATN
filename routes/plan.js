@@ -184,76 +184,99 @@ router.get('/:id', async (req, res) => {
 //update
 router.put('/update/:id', async (req, res) => {
     try {
-        const planId = req.params.id;
-        const updateData = req.body;
-        const userId = updateData.UserId;
-        const forceDuplicate = updateData.forceDuplicate || false;
-
-        // Tìm kế hoạch cũ theo ID
-        const oldPlan = await Plan.findById(planId);
-        if (!oldPlan) {
-            return res.status(404).json({ status: false, message: "Không tìm thấy kế hoạch" });
-        }
-
-        // Nếu không có forceDuplicate và UserId trùng với kế hoạch cũ, cập nhật trực tiếp
-        if (!forceDuplicate && oldPlan.UserId.toString() === userId) {
-            Object.assign(oldPlan, {
-                UserId: updateData.UserId || oldPlan.UserId,
-                SanhId: updateData.SanhId || oldPlan.SanhId,
-                totalPrice: updateData.totalPrice || oldPlan.totalPrice,
-                status: updateData.status || oldPlan.status,
-                plandateevent: updateData.plandateevent || oldPlan.plandateevent, // Thêm trường bắt buộc
-                plansoluongkhach: updateData.plansoluongkhach || oldPlan.plansoluongkhach, // Thêm trường bắt buộc
-                name: updateData.name || oldPlan.name, // Nếu cần
-                planprice: updateData.planprice || oldPlan.planprice, // Nếu cần
-            });
-            await oldPlan.save();
-            return res.status(200).json({
-                status: true,
-                message: "Cập nhật kế hoạch thành công",
-                data: oldPlan
-            });
-        }
-
-        // Nếu có forceDuplicate hoặc User khác, tạo kế hoạch mới với dữ liệu đầy đủ từ oldPlan
-        const newPlan = await Plan.create({
-            UserId: userId,
-            SanhId: oldPlan.SanhId,
-            totalPrice: oldPlan.totalPrice,
-            status: oldPlan.status,
-            plandateevent: oldPlan.plandateevent, // Sao chép trường bắt buộc
-            plansoluongkhach: oldPlan.plansoluongkhach, // Sao chép trường bắt buộc
-            name: oldPlan.name, // Sao chép nếu cần
-            planprice: oldPlan.planprice, // Sao chép nếu cần
+      const planId = req.params.id;
+      const updateData = req.body;
+      const userId = updateData.UserId;
+      const forceDuplicate = updateData.forceDuplicate || false;
+  
+      // Tìm kế hoạch cũ theo ID
+      const oldPlan = await Plan.findById(planId)
+        .populate('SanhId') // Populate thông tin SanhId
+        .populate('caterings') // Populate caterings nếu có
+        .populate('decorates') // Populate decorates nếu có
+        .populate('presents'); // Populate presents nếu có
+  
+      if (!oldPlan) {
+        return res.status(404).json({ status: false, message: "Không tìm thấy kế hoạch" });
+      }
+  
+      // Nếu không có forceDuplicate và UserId trùng với kế hoạch cũ, cập nhật trực tiếp
+      if (!forceDuplicate && oldPlan.UserId.toString() === userId) {
+        Object.assign(oldPlan, {
+          UserId: updateData.UserId || oldPlan.UserId,
+          SanhId: updateData.SanhId || oldPlan.SanhId,
+          totalPrice: updateData.totalPrice || oldPlan.totalPrice,
+          status: updateData.status || oldPlan.status,
+          plandateevent: updateData.plandateevent || oldPlan.plandateevent,
+          plansoluongkhach: updateData.plansoluongkhach || oldPlan.plansoluongkhach,
+          name: updateData.name || oldPlan.name,
+          planprice: updateData.planprice || oldPlan.planprice,
         });
-
-        // Hàm sao chép dịch vụ từ kế hoạch cũ sang kế hoạch mới
-        const copyServices = async (oldModel, newModel, field) => {
-            const services = await oldModel.find({ PlanId: oldPlan._id });
-            if (services.length > 0) {
-                const newServices = services.map(service => ({ PlanId: newPlan._id, [field]: service[field] }));
-                await newModel.insertMany(newServices);
-            }
-        };
-
-        await Promise.all([
-            copyServices(Plan_catering, Plan_catering, 'CateringId'),
-            copyServices(Plan_decorate, Plan_decorate, 'DecorateId'),
-            copyServices(Plan_present, Plan_present, 'PresentId'),
-            copyServices(Plan_lobby, Plan_lobby, 'SanhId')
-        ]);
-
-        res.status(200).json({
-            status: true,
-            message: "Đã tạo kế hoạch sao chép",
-            data: newPlan
+  
+        const updatedPlan = await oldPlan.save();
+  
+        // Populate lại dữ liệu trước khi trả về
+        const populatedUpdatedPlan = await Plan.findById(updatedPlan._id)
+          .populate('SanhId')
+          .populate('caterings')
+          .populate('decorates')
+          .populate('presents');
+  
+        return res.status(200).json({
+          status: true,
+          message: "Cập nhật kế hoạch thành công",
+          data: populatedUpdatedPlan,
         });
+      }
+  
+      // Nếu có forceDuplicate hoặc User khác, tạo kế hoạch mới với dữ liệu đầy đủ từ oldPlan
+      const newPlan = await Plan.create({
+        UserId: userId,
+        SanhId: oldPlan.SanhId._id, // Lấy ID từ SanhId đã populate
+        totalPrice: oldPlan.totalPrice,
+        status: oldPlan.status,
+        plandateevent: oldPlan.plandateevent,
+        plansoluongkhach: oldPlan.plansoluongkhach,
+        name: `Copy of ${oldPlan.name}`, // Thêm tiền tố để phân biệt
+        planprice: oldPlan.planprice,
+      });
+  
+      // Hàm sao chép dịch vụ từ kế hoạch cũ sang kế hoạch mới
+      const copyServices = async (oldModel, newModel, field) => {
+        const services = await oldModel.find({ PlanId: oldPlan._id });
+        if (services.length > 0) {
+          const newServices = services.map(service => ({
+            PlanId: newPlan._id,
+            [field]: service[field],
+          }));
+          await newModel.insertMany(newServices);
+        }
+      };
+  
+      await Promise.all([
+        copyServices(Plan_catering, Plan_catering, 'CateringId'),
+        copyServices(Plan_decorate, Plan_decorate, 'DecorateId'),
+        copyServices(Plan_present, Plan_present, 'PresentId'),
+        copyServices(Plan_lobby, Plan_lobby, 'SanhId'),
+      ]);
+  
+      // Populate lại dữ liệu của newPlan trước khi trả về
+      const populatedNewPlan = await Plan.findById(newPlan._id)
+        .populate('SanhId')
+        .populate('caterings')
+        .populate('decorates')
+        .populate('presents');
+  
+      res.status(200).json({
+        status: true,
+        message: "Đã tạo kế hoạch sao chép",
+        data: populatedNewPlan,
+      });
     } catch (error) {
-        console.error("Lỗi khi cập nhật kế hoạch:", error);
-        res.status(500).json({ status: false, message: "Lỗi khi cập nhật kế hoạch", error: error.message });
+      console.error("Lỗi khi cập nhật kế hoạch:", error);
+      res.status(500).json({ status: false, message: "Lỗi khi cập nhật kế hoạch", error: error.message });
     }
-});
-
+  });
 
 // Lấy danh sách kế hoạch theo UserId
 router.get('/user/:userId', async (req, res) => {
