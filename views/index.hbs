@@ -1,2 +1,27 @@
-<h1>{{title}}</h1>
-<p>Welcome to {{title}}</p>
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Login</title>
+    <link rel="stylesheet" href="../public/stylesheets/login.css">
+</head>
+<body>
+    <div class="container">
+        <div class="logo">
+            <img src="../public/assets/img/logo.png" alt="Logo"> 
+        </div>
+        <form action="/admin/login" method="POST">
+            <div class="input-group">
+                <label for="username">Tên đăng nhập:</label>
+                <input type="text" name="username" id="username" required>
+            </div>
+            <div class="input-group">
+                <label for="password">Mật khẩu:</label>
+                <input type="password" name="password" id="password" required>
+            </div>
+            <button type="submit">Đăng Nhập</button>
+        </form>
+    </div>
+</body>
+</html>
