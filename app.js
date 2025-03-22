@@ -19,6 +19,8 @@ var presentRouter = require('./routes/present')
 var favorteRouter = require('./routes/Favorite')
 var authRouter = require('./routes/auth')
 
+var blogRouter = require('./routes/blog')
+a24a05db164670429a2c916fe21d0a11af70761
 var app = express();
 app.use(express.json());
 const cors = require('cors');
@@ -62,6 +64,7 @@ app.use('/decorate', decorateRouter)
 app.use('/present', presentRouter)
 app.use('/favorite', favorteRouter)
 app.use('/auth', authRouter)
+app.use('/blog', blogRouter)
 
 
 
