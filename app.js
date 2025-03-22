@@ -20,7 +20,6 @@ var favorteRouter = require('./routes/Favorite')
 var authRouter = require('./routes/auth')
 
 var blogRouter = require('./routes/blog')
-a24a05db164670429a2c916fe21d0a11af70761
 var app = express();
 app.use(express.json());
 const cors = require('cors');
