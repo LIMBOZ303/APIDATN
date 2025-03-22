@@ -17,6 +17,7 @@ var decorateRouter = require('./routes/decorate')
 var presentRouter = require('./routes/present')
 var favorteRouter = require('./routes/Favorite')
 var authRouter = require('./routes/auth')
+var blogRouter = require('./routes/blog')
 var app = express();
 app.use(express.json());//xử lý json
 const cors = require('cors');
@@ -46,6 +47,7 @@ app.use('/decorate', decorateRouter)
 app.use('/present', presentRouter)
 app.use('/favorite', favorteRouter)
 app.use('/auth', authRouter)
+app.use('/blog', blogRouter)
 
 
 // mongoose.connect('mongodb://localhost:27017/userDB')
