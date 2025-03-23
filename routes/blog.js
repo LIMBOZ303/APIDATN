@@ -306,8 +306,9 @@ router.get('/public/:slug', async (req, res) => {
     await stats.save();
     
     // Convert content based on requested format
-    let blogData = blog.toObject();
     
+    let blogData = blog.toObject();
+    blogData.views = stats.views;
     if (format === 'mobile') {
       blogData.content = htmlToMobileFormat(blog.content);
     } else if (format === 'text') {
