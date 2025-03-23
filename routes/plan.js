@@ -8,6 +8,9 @@ const Plan_catering = require('../models/PlanWith/Plan-Catering')
 const Plan_decorate = require('../models/PlanWith/Plan-Decorate')
 const Plan_present = require('../models/PlanWith/Plan-Present')
 const Plan_lobby = require('../models/PlanWith/Plan-lobby')
+const catering_order = require('../models/ListOrder/Catering_order'); // Viết thường
+const decorate_order = require('../models/ListOrder/Decorate_order'); // Viết thường
+const present_order = require('../models/ListOrder/Present_order');   // Viết thường
 
 const cate_catering = require('../models/Cate/cate_cateringModel')
 const decorate = require('../models/decorateModel')
@@ -208,15 +211,15 @@ router.put('/update/:id', async (req, res) => {
   
         switch (type) {
           case 'caterings':
-            orderModel = Catering_order;
+            orderModel = catering_order; // Sử dụng đúng biến đã khai báo
             field = 'CateringId';
             break;
           case 'decorates':
-            orderModel = Decorate_order;
+            orderModel = decorate_order; // Sử dụng đúng biến đã khai báo
             field = 'DecorateId';
             break;
           case 'presents':
-            orderModel = Present_order;
+            orderModel = present_order; // Sử dụng đúng biến đã khai báo
             field = 'PresentId';
             break;
           default:
@@ -230,7 +233,7 @@ router.put('/update/:id', async (req, res) => {
             // Nếu là ID từ "Yêu thích", lấy ID gốc
             resolvedIds.push(order[field]);
           } else {
-            // Giả định ID là ID gốc, thêm trực tiếp (có thể thêm kiểm tra tồn tại nếu cần)
+            // Giả định ID là ID gốc, thêm trực tiếp
             resolvedIds.push(id);
           }
         }
