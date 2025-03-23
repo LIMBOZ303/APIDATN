@@ -4,7 +4,7 @@ const User = require('../models/userModel');
 
 
 /* GET users listing. */
-router.get('/', function(req, res, next) {
+router.get('/', function (req, res, next) {
   res.send('respond with a resource');
 });
 
@@ -43,10 +43,10 @@ router.post('/add', async function (req, res, next) {
 
 router.get('/all', async (req, res) => {
   try {
-     const users = await User.find(); // Lấy tất cả người dùng từ database
-     res.status(200).json(users); // Trả về danh sách người dùng dưới dạng JSON
+    const users = await User.find(); // Lấy tất cả người dùng từ database
+    res.status(200).json(users); // Trả về danh sách người dùng dưới dạng JSON
   } catch (err) {
-     res.status(500).json({ message: 'Lỗi khi lấy danh sách người dùng', error: err });
+    res.status(500).json({ message: 'Lỗi khi lấy danh sách người dùng', error: err });
   }
 });
 
@@ -54,7 +54,7 @@ router.get('/all', async (req, res) => {
 //http://localhost:2025/users/register
 // router.post('/register', async (req, res) => {
 //   const { name, email, password, phone, address, role, avatar } = req.body;
-  
+
 //   try {
 //     const newUser = new User ({name, email, password, phone, address, role, avatar});
 //     await newUser.save();
@@ -97,33 +97,33 @@ router.post("/login", async function (req, res) {
 
 router.get('/favorite/:userId', async (req, res) => {
   try {
-      const { userId } = req.params;
+    const { userId } = req.params;
 
-      const user = await User.findById(userId)
-          .populate({
-              path: 'Catering_orders',
-              populate: { path: 'CateringId' } // Populate từ bảng trung gian đến Catering
-          })
-          .populate({
-              path: 'Decorate_orders',
-              populate: { path: 'DecorateId' } // Populate từ bảng trung gian đến Decorate
-          })
-          .populate({
-              path: 'Lobby_orders',
-              populate: { path: 'LobbyId' } // Populate từ bảng trung gian đến Sanh
-          })
-          .populate({
-              path: 'Present_orders',
-              populate: { path: 'PresentId' } // Populate từ bảng trung gian đến Present
-          });
+    const user = await User.findById(userId)
+      .populate({
+        path: 'Catering_orders',
+        populate: { path: 'CateringId' } // Populate từ bảng trung gian đến Catering
+      })
+      .populate({
+        path: 'Decorate_orders',
+        populate: { path: 'DecorateId' } // Populate từ bảng trung gian đến Decorate
+      })
+      .populate({
+        path: 'Lobby_orders',
+        populate: { path: 'LobbyId' } // Populate từ bảng trung gian đến Sanh
+      })
+      .populate({
+        path: 'Present_orders',
+        populate: { path: 'PresentId' } // Populate từ bảng trung gian đến Present
+      });
 
-      if (!user) {
-          return res.status(404).json({ status: false, message: "Không tìm thấy user" });
-      }
+    if (!user) {
+      return res.status(404).json({ status: false, message: "Không tìm thấy user" });
+    }
 
-      res.status(200).json({ status: true, message: "Lấy thông tin user thành công", data: user });
+    res.status(200).json({ status: true, message: "Lấy thông tin user thành công", data: user });
   } catch (error) {
-      res.status(500).json({ status: false, message: "Lỗi server", error: error.message });
+    res.status(500).json({ status: false, message: "Lỗi server", error: error.message });
   }
 });
 
@@ -145,7 +145,7 @@ router.patch('/update/:id', async (req, res) => {
       if (!oldPassword) {
         return res.status(400).json({ status: false, message: 'Vui lòng nhập mật khẩu cũ để xác nhận thay đổi' });
       }
-      if (user.password !== oldPassword) { // Lưu ý: Trong môi trường production, nên dùng bcrypt để so sánh hash
+      if (user.password !== oldPassword) {
         return res.status(400).json({ status: false, message: 'Mật khẩu cũ không chính xác' });
       }
     }
@@ -157,7 +157,6 @@ router.patch('/update/:id', async (req, res) => {
     if (address) user.address = address;
     if (avatar) user.avatar = avatar;
     if (password) {
-      // Trong production, bạn nên hash mật khẩu mới (ví dụ sử dụng bcrypt)
       user.password = password;
     }
 
