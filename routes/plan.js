@@ -11,6 +11,7 @@ const Plan_lobby = require('../models/PlanWith/Plan-lobby')
 const catering_order = require('../models/ListOrder/Catering_order'); // Viết thường
 const decorate_order = require('../models/ListOrder/Decorate_order'); // Viết thường
 const present_order = require('../models/ListOrder/Present_order');   // Viết thường
+const Lobby_order = require('../models/ListOrder/Lobby_order');   // Viết thường
 
 const cate_catering = require('../models/Cate/cate_cateringModel')
 const decorate = require('../models/decorateModel')
