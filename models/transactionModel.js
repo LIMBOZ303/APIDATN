@@ -2,7 +2,8 @@ const mongoose = require('mongoose');
 
 const TransactionSchema = new mongoose.Schema({
   planId: {
-    type: String,
+    type: mongoose.Schema.Types.ObjectId, // Sửa thành ObjectId
+    ref: 'Plan', // Liên kết với model Plan
     required: true,
   },
   userId: {
