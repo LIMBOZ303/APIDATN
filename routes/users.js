@@ -13,26 +13,26 @@ router.post('/add', async function (req, res, next) {
   try {
     const { name, email, password } = req.body;
 
+    // Kiểm tra xem tài khoản đã tồn tại hay chưa
     const existingUser = await User.findOne({ email: email });
+
     if (existingUser) {
+      // Nếu tài khoản đã tồn tại
       return res.status(400).json({
         status: false,
         message: "Email đã tồn tại. Vui lòng sử dụng email khác."
       });
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
-    const addItem = { name, email, password: hashedPassword };
-    const newUser = await User.create(addItem);
+    // Nếu tài khoản chưa tồn tại, tạo tài khoản mới
+    const addItem = { name, email, password };
+    await User.create(addItem);
 
     res.status(200).json({
       status: true,
-      message: "Thêm tài khoản thành công",
-      user: {
-        userId: newUser._id,
-        role: newUser.role,
-      },
+      message: "Thêm tài khoản thành công"
     });
+
   } catch (e) {
     console.error("Lỗi thêm tài khoản:", e);
     res.status(400).json({
@@ -56,12 +56,16 @@ router.post("/login", async function (req, res) {
     const { email, password } = req.body;
     const user = await User.findOne({ email });
     if (!user) {
-      return res.status(400).json({ status: false, message: "Sai email hoặc mật khẩu" });
+      return res
+        .status(400)
+        .json({ status: false, message: "Sai email hoặc mật khẩu" });
     }
 
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) {
-      return res.status(400).json({ status: false, message: "Sai email hoặc mật khẩu" });
+    // Kiểm tra mật khẩu
+    if (password !== user.password) {
+      return res
+        .status(400)
+        .json({ status: false, message: "Sai email hoặc mật khẩu" });
     }
 
     res.status(200).json({
@@ -75,7 +79,9 @@ router.post("/login", async function (req, res) {
       },
     });
   } catch (e) {
-    res.status(400).json({ status: false, message: "Thất bại", error: e.message });
+    res
+      .status(400)
+      .json({ status: false, message: "Thất bại", error: e.message });
   }
 });
 
@@ -128,30 +134,33 @@ router.get('/:userId', async (req, res) => {
 router.patch('/update/:id', async (req, res) => {
   try {
     const { id } = req.params;
+    // Lấy các trường có thể cập nhật từ request body
     const { name, email, password, oldPassword, phone, address, avatar } = req.body;
 
+    // Tìm user theo id
     const user = await User.findById(id);
     if (!user) {
       return res.status(404).json({ status: false, message: 'Không tìm thấy người dùng' });
     }
 
+    // Nếu cập nhật email hoặc mật khẩu, cần kiểm tra mật khẩu cũ
     if ((email && email !== user.email) || password) {
       if (!oldPassword) {
         return res.status(400).json({ status: false, message: 'Vui lòng nhập mật khẩu cũ để xác nhận thay đổi' });
       }
-      const isMatch = await bcrypt.compare(oldPassword, user.password);
-      if (!isMatch) {
+      if (user.password !== oldPassword) {
         return res.status(400).json({ status: false, message: 'Mật khẩu cũ không chính xác' });
       }
     }
 
+    // Cập nhật các trường nếu có giá trị mới
     if (name) user.name = name;
     if (email && email !== user.email) user.email = email;
     if (phone) user.phone = phone;
     if (address) user.address = address;
     if (avatar) user.avatar = avatar;
     if (password) {
-      user.password = await bcrypt.hash(password, 10);
+      user.password = password;
     }
 
     await user.save();
@@ -159,12 +168,7 @@ router.patch('/update/:id', async (req, res) => {
     res.status(200).json({
       status: true,
       message: 'Cập nhật người dùng thành công',
-      user: {
-        userId: user._id,
-        role: user.role,
-        name: user.name,
-        email: user.email,
-      },
+      user
     });
   } catch (error) {
     res.status(500).json({
