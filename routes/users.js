@@ -2,7 +2,6 @@ var express = require('express');
 var router = express.Router();
 const User = require('../models/userModel');
 const Transaction = require('../models/transactionModel');
-const bcrypt = require('bcrypt');
 
 /* GET users listing. */
 router.get('/', function (req, res, next) {
@@ -71,12 +70,7 @@ router.post("/login", async function (req, res) {
     res.status(200).json({
       status: true,
       message: "Đăng nhập thành công",
-      user: {
-        userId: user._id,
-        role: user.role,
-        name: user.name,
-        email: user.email,
-      },
+      user,
     });
   } catch (e) {
     res
