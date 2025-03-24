@@ -177,9 +177,11 @@ router.patch('/update/:id', async (req, res) => {
 router.post('/transactions', async (req, res) => {
   try {
     const { planId, userId, depositAmount } = req.body;
+    console.log('Dữ liệu nhận được:', { planId, userId, depositAmount });
 
     const user = await User.findById(userId);
     if (!user) {
+      console.log('Không tìm thấy user với ID:', userId);
       return res.status(404).json({ status: false, message: 'Không tìm thấy người dùng' });
     }
 
@@ -197,7 +199,7 @@ router.post('/transactions', async (req, res) => {
       transaction,
     });
   } catch (error) {
-    console.error('Lỗi khi lưu giao dịch:', error);
+    console.error('Lỗi chi tiết khi lưu giao dịch:', error.stack); // Log chi tiết lỗi
     res.status(500).json({
       status: false,
       message: 'Lỗi server',
@@ -205,9 +207,8 @@ router.post('/transactions', async (req, res) => {
     });
   }
 });
-
 // API để lấy danh sách giao dịch (chỉ admin mới có quyền truy cập)
-router.get('/transactions', async (req, res) => {
+router.get('/get/transactions', async (req, res) => {
   try {
     // Lấy userId và role từ header
     const userId = req.headers['user-id'];
