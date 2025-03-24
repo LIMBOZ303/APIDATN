@@ -3,7 +3,6 @@ const mongoose = require('mongoose');
 const TransactionSchema = new mongoose.Schema({
   planId: {
     type: String,
-    ref: 'Plan',
     required: true,
   },
   userId: {
