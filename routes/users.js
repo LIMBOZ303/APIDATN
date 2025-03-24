@@ -3,6 +3,8 @@ var router = express.Router();
 const User = require('../models/userModel');
 const Transaction = require('../models/transactionModel');
 
+const Plan = require('../models/planModel'); // Import Plan model
+
 
 /* GET users listing. */
 router.get('/', function (req, res, next) {
@@ -273,8 +275,19 @@ router.patch('/transactions/:id/confirm', async (req, res) => {
       return res.status(404).json({ status: false, message: 'Không tìm thấy giao dịch' });
     }
 
+    // Cập nhật status của Transaction
     transaction.status = 'deposit_confirmed';
     await transaction.save();
+
+    // Đồng bộ status của Plan
+    const plan = await Plan.findById(transaction.planId);
+    if (plan) {
+      plan.status = 'active'; // Cập nhật status của Plan thành active
+      await plan.save();
+      console.log(`Đã cập nhật status của Plan ${plan._id} thành active`);
+    } else {
+      console.warn(`Không tìm thấy Plan với ID ${transaction.planId}`);
+    }
 
     res.status(200).json({
       status: true,
