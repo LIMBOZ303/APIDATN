@@ -177,32 +177,52 @@ router.patch('/update/:id', async (req, res) => {
 });
 
 // API để lưu giao dịch
+
 router.post('/transactions', async (req, res) => {
   try {
-    const { planId, userId, depositAmount } = req.body;
-    console.log('Dữ liệu nhận được:', { planId, userId, depositAmount });
+    const { planId, userId, depositAmount, orderCode } = req.body; // Thêm orderCode nếu cần
+    console.log('Dữ liệu nhận được:', { planId, userId, depositAmount, orderCode });
 
+    // Kiểm tra dữ liệu đầu vào
+    if (!planId || !userId || !depositAmount) {
+      return res.status(400).json({ status: false, message: 'Thiếu thông tin bắt buộc' });
+    }
+
+    // Kiểm tra user có tồn tại
     const user = await User.findById(userId);
     if (!user) {
       console.log('Không tìm thấy user với ID:', userId);
       return res.status(404).json({ status: false, message: 'Không tìm thấy người dùng' });
     }
 
+    // Kiểm tra plan có tồn tại
+    const plan = await Plan.findById(planId);
+    if (!plan) {
+      console.log('Không tìm thấy plan với ID:', planId);
+      return res.status(404).json({ status: false, message: 'Không tìm thấy kế hoạch' });
+    }
+
+    // Tạo transaction mới với status: 'pending'
     const transaction = new Transaction({
       planId,
       userId,
       depositAmount,
-      status: 'pending',
+      orderCode, // Lưu orderCode từ PayOS nếu có
+      status: 'pending', // Đặt status là 'pending' vì đã đặt cọc
     });
     await transaction.save();
 
-    res.status(200).json({
+    // Cập nhật status của Plan thành 'pending'
+    plan.status = 'pending';
+    await plan.save();
+
+    res.status(201).json({
       status: true,
-      message: 'Giao dịch đã được lưu thành công',
-      transaction,
+      message: 'Giao dịch đã được tạo và đang chờ xác nhận',
+      data: transaction,
     });
   } catch (error) {
-    console.error('Lỗi chi tiết khi lưu giao dịch:', error.stack); // Log chi tiết lỗi
+    console.error('Lỗi chi tiết khi lưu giao dịch:', error.stack);
     res.status(500).json({
       status: false,
       message: 'Lỗi server',
@@ -248,9 +268,9 @@ router.get('/get/transactions', async (req, res) => {
 });
 
 // API để admin xác nhận giao dịch
+
 router.patch('/transactions/:id/confirm', async (req, res) => {
   try {
-    // Lấy userId và role từ header
     const userId = req.headers['user-id'];
     const role = req.headers['user-role'];
 
@@ -258,7 +278,6 @@ router.patch('/transactions/:id/confirm', async (req, res) => {
       return res.status(401).json({ status: false, message: 'Thiếu thông tin userId hoặc role' });
     }
 
-    // Kiểm tra xem user có tồn tại và role có đúng không
     const user = await User.findById(userId);
     if (!user) {
       return res.status(404).json({ status: false, message: 'Không tìm thấy người dùng' });
@@ -276,13 +295,13 @@ router.patch('/transactions/:id/confirm', async (req, res) => {
     }
 
     // Cập nhật status của Transaction
-    transaction.status = 'deposit_confirmed';
+    transaction.status = 'active';
     await transaction.save();
 
     // Đồng bộ status của Plan
     const plan = await Plan.findById(transaction.planId);
     if (plan) {
-      plan.status = 'active'; // Cập nhật status của Plan thành active
+      plan.status = 'active';
       await plan.save();
       console.log(`Đã cập nhật status của Plan ${plan._id} thành active`);
     } else {

@@ -9,7 +9,7 @@ const planSchema = new mongoose.Schema({
     SanhId: { type: mongoose.Schema.Types.ObjectId, ref: 'Sanh', required: true },
     UserId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: false },
     totalPrice: { type: Number, required: false, default: 0 },
-    status: { type: String, enum: ['active', 'inactive'], default: 'inactive' },
+    status: { type: String, enum: ['active','pending', 'inactive'], default: 'inactive' },
     planprice: { type: Number, required: false },
     plansoluongkhach: { type: Number, required: true },
     

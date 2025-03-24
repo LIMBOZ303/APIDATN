@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 const TransactionSchema = new mongoose.Schema({
   planId: {
     type: String,
+    ref: 'Plan',
     required: true,
   },
   userId: {
@@ -16,8 +17,8 @@ const TransactionSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['pending', 'deposit_confirmed', 'cancelled'],
-    default: 'pending',
+    enum: ['inactive', 'pending', 'active'],
+    default: 'inactive',
   },
   createdAt: {
     type: Date,
