@@ -2,56 +2,57 @@ const express = require('express');
 const router = express.Router();
 const Catering = require('../models/cateringModel');
 
-//tạo dịch vụ catering
+//tạo catering
 router.post('/add', async (req, res) => {
     const { name, price, cate_cateringId, description, imageUrl } = req.body;
     const catering = new Catering({ name, price, cate_cateringId, description, imageUrl });
     try {
         await catering.save();
-        return res.status(200).json({status: true, message: "Thêm dịch vụ catering thành công", data: catering });
+        return res.status(200).json({ status: true, message: "Thêm dịch vụ catering thành công", data: catering });
     } catch (error) {
         console.log(error);
-        return res.status(500).json({status: false, message: "Lỗi khi thêm dịch vụ catering", error: error });
+        return res.status(500).json({ status: false, message: "Lỗi khi thêm dịch vụ catering", error: error });
     }
 });
 
-//lấy danh sách tất cả dịch vụ catering
+//lấy danh sách catering
 router.get('/all', async (req, res) => {
     try {
         const catering = await Catering.find().populate('cate_cateringId', 'name');
-        return res.status(200).json({status:true, message: "Lấy danh sách tất cả dịch vụ catering thành công", data: catering });
+        return res.status(200).json({ status: true, message: "Lấy danh sách tất cả dịch vụ catering thành công", data: catering });
     } catch (error) {
         console.log(error);
-        return res.status(500).json({status:false, message: "Lỗi khi lấy danh sách tất cả dịch vụ catering", error: error });
+        return res.status(500).json({ status: false, message: "Lỗi khi lấy danh sách tất cả dịch vụ catering", error: error });
     }
 });
 
-//lấy dịch vụ catering theo id
-router.get('/getbyid/:id', async (req, res) => {
+// Lấy dịch vụ catering theo id
+export const getCateringById = async (id) => {
     try {
-        const catering = await Catering.findById(req.params.id);
-        if (!catering) {
-            return res.status(404).json({status:false, message: "Không tìm thấy dịch vụ catering" });
-        }
-        return res.status(200).json({status:true, message: "Lấy dịch vụ catering theo id thành công", data: catering });
+      const response = await axios.get(`${API_URL}/getbyid/${id}`);
+      if (response.data.status) {
+        return response.data.data;
+      } else {
+        throw new Error(response.data.message || "Không tìm thấy dịch vụ catering");
+      }
     } catch (error) {
-        console.log(error);
-        return res.status(500).json({status:false, message: "Lỗi khi lấy dịch vụ catering theo id", error: error });
+      console.error("Lỗi khi lấy dịch vụ catering theo id:", error);
+      throw error;
     }
-});
+  };
 
-//cập nhật dịch vụ catering
+//cập nhật catering
 router.put('/update/:id', async (req, res) => {
-    const { name, price, cate_cateringId, description, imageUrl } = req.body;
+    const { name, price, cate_cateringId, Description, imageUrl } = req.body;
     try {
-        const catering = await Catering.findByIdAndUpdate(req.params.id, { name, price, cate_cateringId, description, imageUrl }, { new: true });
+        const catering = await Catering.findByIdAndUpdate(req.params.id, { name, price, cate_cateringId, Description, imageUrl }, { new: true });
         if (!catering) {
-            return res.status(404).json({status: false, message: "Không tìm thấy dịch vụ catering" });
+            return res.status(404).json({ status: false, message: "Không tìm thấy dịch vụ catering" });
         }
-        return res.status(200).json({status: true, message: "Cập nhật dịch vụ catering thành công", data: catering });
+        return res.status(200).json({ status: true, message: "Cập nhật dịch vụ catering thành công", data: catering });
     } catch (error) {
         console.log(error);
-        return res.status(500).json({status: false, message: "Lỗi khi cập nhật dịch vụ catering", error: error });
+        return res.status(500).json({ status: false, message: "Lỗi khi cập nhật dịch vụ catering", error: error });
     }
 });
 
@@ -60,12 +61,12 @@ router.delete('/delete/:id', async (req, res) => {
     try {
         const catering = await Catering.findByIdAndDelete(req.params.id);
         if (!catering) {
-            return res.status(404).json({status:false, message: "Không tìm thấy dịch vụ catering" });
+            return res.status(404).json({ status: false, message: "Không tìm thấy dịch vụ catering" });
         }
-        return res.status(200).json({status:true, message: "Xóa thành công", data: catering });
+        return res.status(200).json({ status: true, message: "Xóa thành công", data: catering });
     } catch (error) {
         console.log(error);
-        return res.status(500).json({status:false, message: "Lỗi khi xóa dịch vụ catering", error: error });
+        return res.status(500).json({ status: false, message: "Lỗi khi xóa dịch vụ catering", error: error });
     }
 });
 

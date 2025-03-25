@@ -116,16 +116,16 @@ router.get('/favorite/:userId', async (req, res) => {
 
 
 router.get('/:userId', async (req, res) => {
-    try {
-        const user = await User.findById(req.params.id);
-        if (!user) {
-            return res.status(404).json({ status: false, message: "Không tìm tài khoản" });
-        }
-        res.status(200).json({ status: true, message: " thành công", data: user });
-    } catch (error) {
-        console.log(error);
-        res.status(500).json({ status: false, message: "Lỗi " });
+  try {
+    const user = await User.findById(req.params.id);
+    if (!user) {
+      return res.status(404).json({ status: false, message: "Không tìm tài khoản" });
     }
+    res.status(200).json({ status: true, message: " thành công", data: user });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ status: false, message: "Lỗi " });
+  }
 });
 
 router.patch('/update/:id', async (req, res) => {
