@@ -323,4 +323,24 @@ router.patch('/transactions/:id/confirm', async (req, res) => {
   }
 });
 
+router.delete('/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Kiểm tra user có tồn tại không
+    const user = await User.findById(id);
+    if (!user) {
+      return res.status(404).json({ status: false, message: "Không tìm thấy người dùng" });
+    }
+
+    await User.findByIdAndDelete(id);
+
+    res.status(200).json({ status: true, message: "Xóa người dùng thành công" });
+  } catch (error) {
+    console.error("Lỗi khi xóa người dùng:", error);
+    res.status(500).json({ status: false, message: "Lỗi server", error: error.message });
+  }
+});
+
+
 module.exports = router;
