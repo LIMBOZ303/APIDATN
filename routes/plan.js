@@ -322,8 +322,8 @@ router.put('/update/:id', async (req, res) => {
         SanhId: resolvedSanhId,
         totalPrice: updateData.totalPrice || oldPlan.totalPrice,
         status: updateData.status || oldPlan.status,
-        plandateevent: updateData.plandateevent || oldPlan.plandateevent,
-        plansoluongkhach: updateData.plansoluongkhach || oldPlan.plansoluongkhach,
+        plandateevent: updateData.plandateevent || oldPlan.plandateevent || new Date(),
+        plansoluongkhach: updateData.plansoluongkhach || oldPlan.plansoluongkhach || 0,
         name: updateData.name ? `Copy of ${updateData.name}` : `Copy of ${oldPlan.name}`,
         planprice: updateData.planprice || oldPlan.planprice,
       });
