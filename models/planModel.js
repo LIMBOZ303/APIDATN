@@ -11,10 +11,10 @@ const planSchema = new mongoose.Schema({
     totalPrice: { type: Number, required: false, default: 0 },
     status: { type: String, enum: ['active','pending', 'inactive'], default: 'inactive' },
     planprice: { type: Number, required: false },
-    plansoluongkhach: { type: Number, required: true },
+    plansoluongkhach: { type: Number, required: false },
     
     // Lưu `plandateevent` dưới dạng Date và tối ưu tìm kiếm
-    plandateevent: { type: Date, required: true, index: true },
+    plandateevent: { type: Date, required: false, index: true },
 
     caterings: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Plan_Catering' }],
     decorates: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Plan_decorate' }],
@@ -53,7 +53,6 @@ planSchema.pre('findOneAndUpdate', async function (next) {
     next();
 });
 
-// 🛠 Hàm tính tổng tiền
 planSchema.methods.calculateTotalPrice = async function () {
     if (!this.SanhId) return;
     
@@ -61,14 +60,18 @@ planSchema.methods.calculateTotalPrice = async function () {
     const caterings = await Plan_catering.find({ PlanId: this._id }).populate('CateringId', 'price');
     const decorates = await Plan_decorate.find({ PlanId: this._id }).populate('DecorateId', 'price');
     const presents = await Plan_present.find({ PlanId: this._id }).populate('PresentId', 'price');
-    
+
+    // Số bàn ăn dựa trên số lượng khách
+    const soLuongBan = this.plansoluongkhach ? Math.ceil(this.plansoluongkhach / 10) : 0;
+
     const totalPrice = (sanh?.price || 0) +
-        caterings.reduce((sum, item) => sum + (item.CateringId?.price || 0), 0) +
+        caterings.reduce((sum, item) => sum + ((item.CateringId?.price || 0) * soLuongBan), 0) + // Giá món ăn theo số bàn
         decorates.reduce((sum, item) => sum + (item.DecorateId?.price || 0), 0) +
         presents.reduce((sum, item) => sum + (item.PresentId?.price || 0), 0);
-    
+
     this.totalPrice = totalPrice;
 };
+
 
 // 🛠 Virtual field: Trả về `plandateevent` dạng `dd/mm/yyyy`
 planSchema.virtual('plandateeventFormatted').get(function () {

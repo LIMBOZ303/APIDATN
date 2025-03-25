@@ -21,14 +21,22 @@ const present = require('../models/presentModel')
 
 router.post('/add', async (req, res) => {
     try {
-        const { name, SanhId, planprice, plansoluongkhach, plandateevent, cateringId = [], decorateId = [], presentId = [] } = req.body;
+        const { 
+            name, 
+            SanhId, 
+            planprice = null, 
+            plansoluongkhach = null, 
+            plandateevent = null, 
+            cateringId = [], 
+            decorateId = [], 
+            presentId = [] 
+        } = req.body;
 
-        if (!name || !SanhId || !planprice || !plansoluongkhach || !plandateevent) {
-            return res.status(400).json({ status: false, message: "Thiếu dữ liệu bắt buộc" });
+        if (!name || !SanhId) {
+            return res.status(400).json({ status: false, message: "Thiếu dữ liệu bắt buộc (name, SanhId)" });
         }
 
-
-        // Tạo mới kế hoạch
+        // Tạo mới kế hoạch, các giá trị có thể để trống
         const newPlan = await Plan.create({
             name,
             SanhId,
@@ -39,25 +47,20 @@ router.post('/add', async (req, res) => {
 
         const planId = newPlan._id;
 
-        // Liên kết với các dịch vụ
-        if (Array.isArray(cateringId) && cateringId.length > 0) {
-            await Plan_catering.insertMany(cateringId.map(id => ({ PlanId: planId, CateringId: id })));
-        }
+        // Liên kết với các dịch vụ nếu có
+        await Promise.all([
+            cateringId.length > 0 ? Plan_catering.insertMany(cateringId.map(id => ({ PlanId: planId, CateringId: id }))) : null,
+            decorateId.length > 0 ? Plan_decorate.insertMany(decorateId.map(id => ({ PlanId: planId, DecorateId: id }))) : null,
+            presentId.length > 0 ? Plan_present.insertMany(presentId.map(id => ({ PlanId: planId, PresentId: id }))) : null
+        ]);
 
-        if (Array.isArray(decorateId) && decorateId.length > 0) {
-            await Plan_decorate.insertMany(decorateId.map(id => ({ PlanId: planId, DecorateId: id })));
-        }
-
-        if (Array.isArray(presentId) && presentId.length > 0) {
-            await Plan_present.insertMany(presentId.map(id => ({ PlanId: planId, PresentId: id })));
-        }
-
-        return res.status(201).json({ status: true, message: "Thêm kế hoạch và dịch vụ thành công", data: newPlan });
+        return res.status(201).json({ status: true, message: "Thêm kế hoạch thành công", data: newPlan });
     } catch (error) {
         console.error(error);
         return res.status(500).json({ status: false, message: "Lỗi khi thêm kế hoạch" });
     }
 });
+
 
 
 
