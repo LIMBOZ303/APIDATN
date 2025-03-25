@@ -26,20 +26,7 @@ router.get('/all', async (req, res) => {
     }
 });
 
-// Lấy dịch vụ catering theo id
-export const getCateringById = async (id) => {
-    try {
-      const response = await axios.get(`${API_URL}/getbyid/${id}`);
-      if (response.data.status) {
-        return response.data.data;
-      } else {
-        throw new Error(response.data.message || "Không tìm thấy dịch vụ catering");
-      }
-    } catch (error) {
-      console.error("Lỗi khi lấy dịch vụ catering theo id:", error);
-      throw error;
-    }
-  };
+
 
 //cập nhật catering
 router.put('/update/:id', async (req, res) => {
