@@ -52,24 +52,37 @@ planSchema.pre('findOneAndUpdate', async function (next) {
     }
     next();
 });
-
 planSchema.methods.calculateTotalPrice = async function () {
-    if (!this.SanhId) return;
-    
-    const sanh = await Sanh.findById(this.SanhId, 'price');
-    const caterings = await Plan_catering.find({ PlanId: this._id }).populate('CateringId', 'price');
-    const decorates = await Plan_decorate.find({ PlanId: this._id }).populate('DecorateId', 'price');
-    const presents = await Plan_present.find({ PlanId: this._id }).populate('PresentId', 'price');
+    if (!this.SanhId) {
+        this.totalPrice = 0;
+        return;
+    }
 
-    // Số bàn ăn dựa trên số lượng khách
+    const sanh = await Sanh.findById(this.SanhId, 'price');
+    const caterings = await Plan_Catering.find({ PlanId: this._id }).populate('CateringId', 'price pricePerTable');
+    const decorates = await Plan_Decorate.find({ PlanId: this._id }).populate('DecorateId', 'price');
+    const presents = await Plan_Present.find({ PlanId: this._id }).populate('PresentId', 'price');
+
+    // Tính số bàn
     const soLuongBan = this.plansoluongkhach ? Math.ceil(this.plansoluongkhach / 10) : 0;
 
-    const totalPrice = (sanh?.price || 0) +
-        caterings.reduce((sum, item) => sum + ((item.CateringId?.price || 0) * soLuongBan), 0) + // Giá món ăn theo số bàn
+    // Tính tổng giá catering
+    let totalCateringPrice = 0;
+    caterings.forEach(item => {
+        if (item.CateringId) {
+            if (item.CateringId.pricePerTable) {
+                const priceEntry = item.CateringId.pricePerTable.find(p => p.numberOfTables === soLuongBan);
+                totalCateringPrice += priceEntry ? priceEntry.price : Math.max(...item.CateringId.pricePerTable.map(p => p.price), 0);
+            } else {
+                totalCateringPrice += (item.CateringId.price || 0) * soLuongBan;
+            }
+        }
+    });
+
+    this.totalPrice = (sanh?.price || 0) +
+        totalCateringPrice +
         decorates.reduce((sum, item) => sum + (item.DecorateId?.price || 0), 0) +
         presents.reduce((sum, item) => sum + (item.PresentId?.price || 0), 0);
-
-    this.totalPrice = totalPrice;
 };
 
 

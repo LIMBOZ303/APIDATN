@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
-const Plan = require('../planModel')
+const Plan = require('../planModel');
+const Catering = require('../cateringModel');
 
 const Plan_CateringSchema = new mongoose.Schema({
     PlanId: { 
@@ -14,24 +15,21 @@ const Plan_CateringSchema = new mongoose.Schema({
     },
 }, { timestamps: true });
 
-// 🔄 Hàm cập nhật totalPrice
-async function updatePlanTotalPrice(planId) {
-    if (!planId) return;
-    const plan = await Plan.findById(planId);
+// Sử dụng phương thức calculateTotalPrice từ Plan thay vì tính lại
+Plan_CateringSchema.post('save', async function () {
+    const plan = await Plan.findById(this.PlanId);
     if (plan) {
         await plan.calculateTotalPrice();
         await plan.save();
     }
-}
-
-// 🛠 Middleware: Cập nhật khi thêm dịch vụ
-Plan_CateringSchema.post('save', async function () {
-    await updatePlanTotalPrice(this.PlanId);
 });
 
-// 🛠 Middleware: Cập nhật khi xóa dịch vụ
 Plan_CateringSchema.post('remove', async function () {
-    await updatePlanTotalPrice(this.PlanId);
+    const plan = await Plan.findById(this.PlanId);
+    if (plan) {
+        await plan.calculateTotalPrice();
+        await plan.save();
+    }
 });
 
 module.exports = mongoose.model('Plan_Catering', Plan_CateringSchema);
