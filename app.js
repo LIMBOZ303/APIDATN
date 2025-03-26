@@ -3,6 +3,7 @@ var express = require('express');
 var path = require('path');
 var cookieParser = require('cookie-parser');
 var logger = require('morgan');
+const { Server } = require('socket.io');
 const mongoose = require('mongoose');
 const hbs = require('hbs'); 
 var indexRouter = require('./routes/index');
@@ -21,6 +22,13 @@ var authRouter = require('./routes/auth')
 
 var blogRouter = require('./routes/blog')
 var app = express();
+const server = http.createServer(app);
+const io = new Server(server, {
+  cors: {
+    origin: '*', // Cho phép tất cả origin (có thể giới hạn trong production)
+    methods: ['GET', 'POST'],
+  },
+});
 app.use(express.json());
 const cors = require('cors');
 require('dotenv').config();
@@ -51,8 +59,8 @@ app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.use('/', indexRouter);
-app.use('/users', usersRouter);
-app.use('/plan', planRouter);
+app.use('/users', (req, res, next) => usersRouter(req, res, next, io));
+app.use('/plan', (req, res, next) => planRouter(req, res, next, io));
 app.use('/catering', cateringRouter);
 app.use('/lobby', lobbyRouter);
 app.use('/cate_catering', cate_cateringRouter);
@@ -91,6 +99,12 @@ app.use(function(err, req, res, next) {
   // render the error page
   res.status(err.status || 500);
   res.render('error');
+});
+
+// Khởi động server
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
 });
 
 module.exports = app;
