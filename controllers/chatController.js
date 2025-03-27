@@ -1,4 +1,5 @@
 const ChatMessage = require('../models/chatModel');
+const User = require('../models/userModel');
 
 // Lấy lịch sử chat giữa admin và một user cụ thể
 exports.getChatHistory = async (req, res) => {
@@ -83,14 +84,29 @@ exports.getAllChatUsers = async (req, res) => {
             }
         });
         
+        // Lấy thông tin tên người dùng từ model User
+        const userIds = Array.from(usersMap.keys());
+        const users = await User.find({ _id: { $in: userIds } }).select('_id name');
+        
+        // Tạo map để nhanh chóng tìm tên người dùng từ ID
+        const userNameMap = {};
+        users.forEach(user => {
+            userNameMap[user._id.toString()] = user.name;
+        });
+        
+        // Thêm tên người dùng vào kết quả
+        usersMap.forEach((value, key) => {
+            value.userName = userNameMap[key] || 'Người dùng'; // Mặc định nếu không tìm thấy tên
+        });
+        
         // Chuyển Map thành mảng và sắp xếp theo thời gian tin nhắn mới nhất
-        const users = Array.from(usersMap.values()).sort((a, b) => 
+        const result = Array.from(usersMap.values()).sort((a, b) => 
             new Date(b.lastMessageTime) - new Date(a.lastMessageTime)
         );
         
         res.status(200).json({
             success: true,
-            data: users
+            data: result
         });
     } catch (error) {
         console.error('Error getting chat users:', error);

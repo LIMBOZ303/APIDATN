@@ -9,6 +9,7 @@ var debug = require('debug')('apidatn:server');
 var http = require('http');
 const socketio = require('socket.io');
 const ChatMessage = require('../models/chatModel');
+const User = require('../models/userModel');
 
 /**
  * Get port from environment and store in Express.
@@ -35,6 +36,8 @@ const io = socketio(server, {
 
 // Map để lưu trữ kết nối của người dùng
 const userConnections = new Map();
+// Map để lưu trữ thông tin người dùng
+const userInfoMap = new Map();
 let adminSocket = null;
 
 // Xử lý kết nối Socket.IO
@@ -42,7 +45,7 @@ io.on('connection', (socket) => {
   console.log('New connection:', socket.id);
   
   // User đăng ký kết nối với ID của họ
-  socket.on('registerUser', (userId) => {
+  socket.on('registerUser', async (userId) => {
     console.log(`User registered: ${userId}`);
     
     // Lưu socket của user vào map
@@ -51,10 +54,25 @@ io.on('connection', (socket) => {
     // Thêm socket vào room riêng với userId
     socket.join(userId);
     
+    // Lấy thông tin người dùng từ database
+    try {
+      const user = await User.findById(userId).select('name');
+      if (user) {
+        userInfoMap.set(userId, {
+          name: user.name,
+          id: userId
+        });
+        console.log(`User info stored for: ${userId}, name: ${user.name}`);
+      }
+    } catch (error) {
+      console.error(`Error fetching user info for ${userId}:`, error);
+    }
+    
     // Khi user ngắt kết nối, xóa khỏi map
     socket.on('disconnect', () => {
       console.log(`User disconnected: ${userId}`);
       userConnections.delete(userId);
+      // Giữ lại thông tin người dùng để sử dụng sau
     });
   });
   
@@ -90,9 +108,30 @@ io.on('connection', (socket) => {
       if (senderType === 'user') {
         // Nếu người gửi là user, gửi tin nhắn đến admin
         if (adminSocket) {
+          // Lấy thông tin người dùng để gửi kèm
+          let userName = 'Người dùng';
+          if (userInfoMap.has(senderId)) {
+            userName = userInfoMap.get(senderId).name;
+          } else {
+            // Nếu chưa có trong map, thử lấy từ database
+            try {
+              const user = await User.findById(senderId).select('name');
+              if (user) {
+                userName = user.name;
+                userInfoMap.set(senderId, {
+                  name: user.name,
+                  id: senderId
+                });
+              }
+            } catch (error) {
+              console.error(`Error fetching user info for ${senderId}:`, error);
+            }
+          }
+          
           adminSocket.emit('newMessage', {
             message: newMessage,
-            userId: senderId
+            userId: senderId,
+            userName: userName
           });
         }
       } else {
