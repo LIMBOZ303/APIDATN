@@ -7,7 +7,7 @@ const userSchema = new mongoose.Schema({
    phone: { type: String },
    address: { type: String },
    role: { type: String, default: 'user' },
-   avatar: { type: String, default: 'https://via.placeholder.com/150' },
+   avatar: { type: String, default: 'https://static-00.iconduck.com/assets.00/user-icon-2046x2048-9pwm22pp.png' },
    isVerified: { type: Boolean, default: false },
    
    // Danh sách đơn hàng đã đặt
