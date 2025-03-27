@@ -573,7 +573,48 @@ router.post('/khaosat', async (req, res) => {
 });
 
 
+router.delete('/user/:userId/plan/:planId', async (req, res) => {
+    try {
+        const { userId, planId } = req.params;
 
+        // Kiểm tra xem userId và planId có hợp lệ không
+        if (!userId.match(/^[0-9a-fA-F]{24}$/)) {
+            return res.status(400).json({ status: false, message: "UserId không hợp lệ" });
+        }
+        if (!planId.match(/^[0-9a-fA-F]{24}$/)) {
+            return res.status(400).json({ status: false, message: "PlanId không hợp lệ" });
+        }
+
+        // Tìm và xóa kế hoạch cụ thể của user
+        const deletedPlan = await Plan.findOneAndDelete({ _id: planId, UserId: userId });
+        if (!deletedPlan) {
+            return res.status(404).json({ 
+                status: false, 
+                message: "Không tìm thấy kế hoạch với PlanId và UserId này" 
+            });
+        }
+
+        // Xóa các dịch vụ liên quan trong bảng trung gian
+        await Promise.all([
+            Plan_catering.deleteMany({ PlanId: planId }),
+            Plan_decorate.deleteMany({ PlanId: planId }),
+            Plan_present.deleteMany({ PlanId: planId })
+        ]);
+
+        return res.status(200).json({ 
+            status: true, 
+            message: "Xóa kế hoạch và các dịch vụ liên quan thành công" 
+        });
+
+    } catch (error) {
+        console.error("Lỗi khi xóa kế hoạch:", error);
+        return res.status(500).json({ 
+            status: false, 
+            message: "Lỗi khi xóa kế hoạch",
+            error: error.message 
+        });
+    }
+});
 
 
 
