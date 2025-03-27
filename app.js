@@ -20,6 +20,8 @@ var favorteRouter = require('./routes/Favorite')
 var authRouter = require('./routes/auth')
 var transaction = require('./routes/transaction')
 var blogRouter = require('./routes/blog')
+var chatRouter = require('./routes/chat')
+
 var app = express();
 app.use(express.json());
 const cors = require('cors');
@@ -65,6 +67,7 @@ app.use('/favorite', favorteRouter)
 app.use('/auth', authRouter)
 app.use('/blog', blogRouter)
 app.use('/transaction', transaction)
+app.use('/chat', chatRouter)
 
 
 

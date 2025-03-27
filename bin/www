@@ -7,6 +7,8 @@
 var app = require('../app');
 var debug = require('debug')('apidatn:server');
 var http = require('http');
+const socketio = require('socket.io');
+const ChatMessage = require('../models/chatModel');
 
 /**
  * Get port from environment and store in Express.
@@ -20,6 +22,118 @@ app.set('port', port);
  */
 
 var server = http.createServer(app);
+
+/**
+ * Socket.io setup
+ */
+const io = socketio(server, {
+  cors: {
+    origin: "*", // Cho phép tất cả các nguồn kết nối
+    methods: ["GET", "POST"]
+  }
+});
+
+// Map để lưu trữ kết nối của người dùng
+const userConnections = new Map();
+let adminSocket = null;
+
+// Xử lý kết nối Socket.IO
+io.on('connection', (socket) => {
+  console.log('New connection:', socket.id);
+  
+  // User đăng ký kết nối với ID của họ
+  socket.on('registerUser', (userId) => {
+    console.log(`User registered: ${userId}`);
+    
+    // Lưu socket của user vào map
+    userConnections.set(userId, socket);
+    
+    // Thêm socket vào room riêng với userId
+    socket.join(userId);
+    
+    // Khi user ngắt kết nối, xóa khỏi map
+    socket.on('disconnect', () => {
+      console.log(`User disconnected: ${userId}`);
+      userConnections.delete(userId);
+    });
+  });
+  
+  // Admin đăng ký kết nối
+  socket.on('registerAdmin', () => {
+    console.log('Admin registered');
+    
+    // Lưu socket của admin
+    adminSocket = socket;
+    
+    // Khi admin ngắt kết nối
+    socket.on('disconnect', () => {
+      console.log('Admin disconnected');
+      adminSocket = null;
+    });
+  });
+  
+  // Xử lý khi admin hoặc user gửi tin nhắn
+  socket.on('sendMessage', async (data) => {
+    try {
+      const { senderId, receiverId, message, senderType } = data;
+      
+      // Lưu tin nhắn vào database
+      const newMessage = await ChatMessage.create({
+        senderId,
+        receiverId,
+        message,
+        senderType,
+        read: false
+      });
+      
+      // Gửi tin nhắn đến người nhận
+      if (senderType === 'user') {
+        // Nếu người gửi là user, gửi tin nhắn đến admin
+        if (adminSocket) {
+          adminSocket.emit('newMessage', {
+            message: newMessage,
+            userId: senderId
+          });
+        }
+      } else {
+        // Nếu người gửi là admin, gửi tin nhắn đến user
+        io.to(receiverId).emit('newMessage', {
+          message: newMessage
+        });
+      }
+      
+      // Gửi lại tin nhắn cho người gửi để xác nhận
+      socket.emit('messageSent', {
+        message: newMessage
+      });
+    } catch (error) {
+      console.error('Error sending message:', error);
+      socket.emit('error', { message: 'Không thể gửi tin nhắn' });
+    }
+  });
+  
+  // Xử lý khi admin đọc tin nhắn
+  socket.on('markAsRead', async (data) => {
+    try {
+      const { userId } = data;
+      
+      // Cập nhật trạng thái đã đọc cho tin nhắn từ user
+      await ChatMessage.updateMany(
+        { 
+          senderId: userId,
+          receiverId: 'admin',
+          read: false 
+        },
+        { read: true }
+      );
+      
+      // Thông báo cho người gửi rằng tin nhắn đã được đọc
+      io.to(userId).emit('messagesRead');
+    } catch (error) {
+      console.error('Error marking messages as read:', error);
+    }
+  });
+});
 
 /**
  * Listen on provided port, on all network interfaces.

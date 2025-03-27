@@ -1,0 +1,402 @@
+{{#extend "layout"}}
+  {{#content "content"}}
+    <div class="container-fluid py-4">
+      <div class="row">
+        <!-- Phần sidebar danh sách người dùng -->
+        <div class="col-md-4">
+          <div class="card border-0 shadow-sm">
+            <div class="card-header bg-primary text-white">
+              <h5 class="card-title mb-0"><i class="fas fa-users me-2"></i>Danh sách người dùng</h5>
+            </div>
+            <div class="card-body p-0">
+              <div class="list-group list-group-flush" id="user-list">
+                <!-- Danh sách người dùng sẽ được hiển thị ở đây -->
+                <div class="text-center p-4">
+                  <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Đang tải...</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Phần nội dung tin nhắn -->
+        <div class="col-md-8">
+          <div class="card border-0 shadow-sm">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+              <h5 class="card-title mb-0" id="chat-title"><i class="fas fa-comment-dots me-2"></i>Chọn một người dùng để bắt đầu chat</h5>
+              <span class="badge bg-success rounded-pill" id="user-status" style="display: none;">Online</span>
+            </div>
+            <div class="card-body chat-body" id="chat-messages" style="height: 450px; overflow-y: auto; background-color: #f8f9fa;">
+              <!-- Tin nhắn sẽ được hiển thị ở đây -->
+              <div class="text-center p-5">
+                <i class="far fa-comments text-muted" style="font-size: 5rem;"></i>
+                <p class="mt-3 text-muted">Chọn một người dùng để bắt đầu chat</p>
+              </div>
+            </div>
+            <div class="card-footer bg-white">
+              <div class="input-group" id="message-input-container" style="display: none;">
+                <input type="text" class="form-control border-primary" id="message-input" placeholder="Nhập tin nhắn...">
+                <button class="btn btn-primary" id="send-message-btn">
+                  <i class="fas fa-paper-plane me-1"></i> Gửi
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Include Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+    <!-- Include Socket.IO client -->
+    <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script>
+    
+    <!-- Chat JavaScript -->
+    <script>
+      document.addEventListener('DOMContentLoaded', function() {
+        // Kết nối Socket.IO
+        const socket = io();
+        
+        // Đăng ký là admin
+        socket.emit('registerAdmin');
+        
+        let currentUserId = null;
+        
+        // Các element DOM
+        const userList = document.getElementById('user-list');
+        const chatMessages = document.getElementById('chat-messages');
+        const chatTitle = document.getElementById('chat-title');
+        const messageInput = document.getElementById('message-input');
+        const sendMessageBtn = document.getElementById('send-message-btn');
+        const messageInputContainer = document.getElementById('message-input-container');
+        const userStatus = document.getElementById('user-status');
+        
+        // Xử lý lỗi kết nối Socket.IO
+        socket.on('connect_error', (error) => {
+          console.error('Connection error:', error);
+          alert('Không thể kết nối đến server chat: ' + error.message);
+        });
+        
+        // Lấy danh sách người dùng chat
+        async function fetchChatUsers() {
+          try {
+            const response = await fetch('/chat/users');
+            const data = await response.json();
+            
+            if (data.success) {
+              renderChatUsers(data.data);
+            } else {
+              console.error('Error fetching chat users:', data.message);
+            }
+          } catch (error) {
+            console.error('Error fetching chat users:', error);
+          }
+        }
+        
+        // Hiển thị danh sách người dùng chat
+        function renderChatUsers(users) {
+          userList.innerHTML = '';
+          
+          if (users.length === 0) {
+            userList.innerHTML = `
+              <div class="text-center p-4">
+                <i class="far fa-comments text-muted" style="font-size: 2rem;"></i>
+                <p class="mt-2 text-muted">Chưa có người dùng nào chat</p>
+              </div>
+            `;
+            return;
+          }
+          
+          users.forEach(user => {
+            const userItem = document.createElement('a');
+            userItem.href = '#';
+            userItem.className = `list-group-item list-group-item-action border-0 d-flex justify-content-between align-items-center py-3 ${user.unreadCount > 0 ? 'fw-bold' : ''}`;
+            userItem.dataset.userId = user.userId;
+            
+            userItem.innerHTML = `
+              <div class="d-flex align-items-center">
+                <div class="user-avatar bg-light text-primary rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 40px; height: 40px;">
+                  <i class="fas fa-user"></i>
+                </div>
+                <div>
+                  <div class="text-truncate" style="max-width: 180px;">${user.userId}</div>
+                  <small class="text-muted">${user.lastMessage ? truncateMessage(user.lastMessage, 25) : 'Không có tin nhắn'}</small>
+                </div>
+              </div>
+              ${user.unreadCount > 0 ? `<span class="badge bg-danger rounded-pill">${user.unreadCount}</span>` : ''}
+            `;
+            
+            userItem.addEventListener('click', function(e) {
+              e.preventDefault();
+              
+              // Xóa trạng thái active của các người dùng khác
+              const activeItems = userList.querySelectorAll('.active');
+              activeItems.forEach(item => item.classList.remove('active'));
+              
+              // Thêm trạng thái active cho người dùng hiện tại
+              this.classList.add('active');
+              
+              // Cập nhật thông tin người dùng hiện tại
+              currentUserId = this.dataset.userId;
+              chatTitle.innerHTML = `<i class="fas fa-comment-dots me-2"></i>Chat với ${currentUserId}`;
+              
+              // Hiển thị khung nhập tin nhắn
+              messageInputContainer.style.display = 'flex';
+              
+              // Xóa badge unread
+              const badge = this.querySelector('.badge');
+              if (badge) badge.remove();
+              
+              // Xóa trạng thái bold
+              this.classList.remove('fw-bold');
+              
+              // Lấy lịch sử chat với người dùng
+              fetchChatHistory(currentUserId);
+              
+              // Đánh dấu tin nhắn đã đọc
+              socket.emit('markAsRead', { userId: currentUserId });
+            });
+            
+            userList.appendChild(userItem);
+          });
+        }
+        
+        // Lấy lịch sử chat với một người dùng
+        async function fetchChatHistory(userId) {
+          try {
+            chatMessages.innerHTML = `
+              <div class="text-center p-4">
+                <div class="spinner-border text-primary" role="status">
+                  <span class="visually-hidden">Đang tải...</span>
+                </div>
+              </div>
+            `;
+            
+            const response = await fetch(`/chat/history/${userId}`);
+            const data = await response.json();
+            
+            if (data.success) {
+              renderMessages(data.data);
+            } else {
+              console.error('Error fetching chat history:', data.message);
+              chatMessages.innerHTML = `
+                <div class="text-center p-4">
+                  <i class="fas fa-exclamation-circle text-danger" style="font-size: 2rem;"></i>
+                  <p class="mt-2 text-danger">Không thể tải lịch sử chat: ${data.message}</p>
+                </div>
+              `;
+            }
+          } catch (error) {
+            console.error('Error fetching chat history:', error);
+            chatMessages.innerHTML = `
+              <div class="text-center p-4">
+                <i class="fas fa-exclamation-circle text-danger" style="font-size: 2rem;"></i>
+                <p class="mt-2 text-danger">Không thể tải lịch sử chat</p>
+              </div>
+            `;
+          }
+        }
+        
+        // Hiển thị tin nhắn
+        function renderMessages(messages) {
+          chatMessages.innerHTML = '';
+          
+          if (messages.length === 0) {
+            chatMessages.innerHTML = `
+              <div class="text-center p-4">
+                <i class="far fa-comment-dots text-muted" style="font-size: 2rem;"></i>
+                <p class="mt-2 text-muted">Chưa có tin nhắn nào</p>
+              </div>
+            `;
+            return;
+          }
+          
+          // Tạo container cho tin nhắn
+          const messagesContainer = document.createElement('div');
+          messagesContainer.className = 'messages-container p-3';
+          
+          messages.forEach(message => {
+            const isAdmin = message.senderType === 'admin';
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${isAdmin ? 'message-sent' : 'message-received'} mb-3`;
+            
+            messageDiv.innerHTML = `
+              <div class="d-flex ${isAdmin ? 'justify-content-end' : 'justify-content-start'}">
+                <div class="message-content p-3 rounded ${isAdmin ? 'bg-primary text-white' : 'bg-white shadow-sm border'}" style="max-width: 75%;">
+                  <div>${message.message}</div>
+                  <small class="message-time d-block mt-1 ${isAdmin ? 'text-white-50' : 'text-muted'}">${formatTime(new Date(message.createdAt))}</small>
+                </div>
+              </div>
+            `;
+            
+            messagesContainer.appendChild(messageDiv);
+          });
+          
+          chatMessages.appendChild(messagesContainer);
+          
+          // Cuộn xuống cuối cùng
+          chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+        
+        // Rút gọn tin nhắn
+        function truncateMessage(message, maxLength) {
+          return message.length > maxLength ? message.substring(0, maxLength) + '...' : message;
+        }
+        
+        // Định dạng thời gian
+        function formatTime(date) {
+          const now = new Date();
+          const diff = now - date;
+          
+          // Nếu tin nhắn được gửi trong ngày hôm nay, hiển thị giờ
+          if (diff < 24 * 60 * 60 * 1000 && date.getDate() === now.getDate()) {
+            return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+          }
+          
+          // Nếu tin nhắn được gửi trong tuần này, hiển thị thứ
+          if (diff < 7 * 24 * 60 * 60 * 1000) {
+            const days = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
+            return `${days[date.getDay()]} ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+          }
+          
+          // Nếu tin nhắn được gửi trước đó, hiển thị ngày tháng năm
+          return date.toLocaleDateString();
+        }
+        
+        // Xử lý sự kiện gửi tin nhắn
+        sendMessageBtn.addEventListener('click', sendMessage);
+        
+        messageInput.addEventListener('keypress', function(e) {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            sendMessage();
+          }
+        });
+        
+        function sendMessage() {
+          const message = messageInput.value.trim();
+          
+          if (!message || !currentUserId) return;
+          
+          // Emit sự kiện gửi tin nhắn
+          socket.emit('sendMessage', {
+            senderId: 'admin',
+            receiverId: currentUserId,
+            message: message,
+            senderType: 'admin'
+          });
+          
+          // Xóa input
+          messageInput.value = '';
+        }
+        
+        // Xử lý sự kiện nhận tin nhắn mới
+        socket.on('newMessage', async (data) => {
+          const { message, userId } = data;
+          
+          // Cập nhật danh sách người dùng chat
+          await fetchChatUsers();
+          
+          // Nếu đang chat với người dùng này, cập nhật tin nhắn và đánh dấu đã đọc
+          if (currentUserId === userId || currentUserId === message.senderId) {
+            // Thêm tin nhắn mới vào khung chat
+            appendMessage(message);
+            
+            // Đánh dấu tin nhắn đã đọc
+            socket.emit('markAsRead', { userId: message.senderId });
+          }
+        });
+        
+        // Xử lý sự kiện tin nhắn đã gửi
+        socket.on('messageSent', (data) => {
+          const { message } = data;
+          
+          // Thêm tin nhắn mới vào khung chat
+          appendMessage(message);
+        });
+        
+        // Thêm tin nhắn mới vào khung chat
+        function appendMessage(message) {
+          // Nếu không có tin nhắn nào, xóa thông báo "Chưa có tin nhắn nào"
+          if (chatMessages.querySelector('.text-center')) {
+            chatMessages.innerHTML = '';
+          }
+          
+          // Tìm hoặc tạo container tin nhắn
+          let messagesContainer = chatMessages.querySelector('.messages-container');
+          if (!messagesContainer) {
+            messagesContainer = document.createElement('div');
+            messagesContainer.className = 'messages-container p-3';
+            chatMessages.appendChild(messagesContainer);
+          }
+          
+          const isAdmin = message.senderType === 'admin';
+          const messageDiv = document.createElement('div');
+          messageDiv.className = `message ${isAdmin ? 'message-sent' : 'message-received'} mb-3`;
+          
+          messageDiv.innerHTML = `
+            <div class="d-flex ${isAdmin ? 'justify-content-end' : 'justify-content-start'}">
+              <div class="message-content p-3 rounded ${isAdmin ? 'bg-primary text-white' : 'bg-white shadow-sm border'}" style="max-width: 75%;">
+                <div>${message.message}</div>
+                <small class="message-time d-block mt-1 ${isAdmin ? 'text-white-50' : 'text-muted'}">${formatTime(new Date(message.createdAt))}</small>
+              </div>
+            </div>
+          `;
+          
+          messagesContainer.appendChild(messageDiv);
+          
+          // Thêm hiệu ứng khi tin nhắn mới được thêm vào
+          messageDiv.classList.add('new-message-animation');
+          
+          // Cuộn xuống cuối cùng
+          chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+        
+        // Lấy danh sách người dùng chat khi trang tải
+        fetchChatUsers();
+        
+        // Cập nhật danh sách người dùng chat mỗi 30 giây
+        setInterval(fetchChatUsers, 30000);
+      });
+    </script>
+    
+    <style>
+      .chat-body {
+        background-color: #f8f9fa;
+      }
+      .message-sent .message-content {
+        border-radius: 18px 0 18px 18px !important;
+      }
+      .message-received .message-content {
+        border-radius: 0 18px 18px 18px !important;
+      }
+      .message-time {
+        font-size: 0.7rem;
+        text-align: right;
+      }
+      .list-group-item.active {
+        background-color: #f0f7ff;
+        border-color: #e3f2fd;
+        color: #0d6efd;
+      }
+      .user-avatar {
+        transition: all 0.2s ease;
+      }
+      .list-group-item:hover .user-avatar {
+        background-color: #e3f2fd !important;
+      }
+      
+      /* Hiệu ứng cho tin nhắn mới */
+      @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+      .new-message-animation {
+        animation: fadeIn 0.3s ease-out;
+      }
+    </style>
+  {{/content}}
+{{/extend}} 
