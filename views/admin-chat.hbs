@@ -115,7 +115,6 @@
             userItem.href = '#';
             userItem.className = `list-group-item list-group-item-action border-0 d-flex justify-content-between align-items-center py-3 ${user.unreadCount > 0 ? 'fw-bold' : ''}`;
             userItem.dataset.userId = user.userId;
-            userItem.dataset.userName = user.userName || 'Người dùng';
             
             userItem.innerHTML = `
               <div class="d-flex align-items-center">
@@ -123,8 +122,7 @@
                   <i class="fas fa-user"></i>
                 </div>
                 <div>
-                  <div class="text-truncate" style="max-width: 180px;">${user.userName || 'Người dùng'}</div>
-                  <small class="text-muted d-block text-truncate" style="max-width: 180px;">${user.userId}</small>
+                  <div class="text-truncate" style="max-width: 180px;">${user.userId}</div>
                   <small class="text-muted">${user.lastMessage ? truncateMessage(user.lastMessage, 25) : 'Không có tin nhắn'}</small>
                 </div>
               </div>
@@ -143,8 +141,7 @@
               
               // Cập nhật thông tin người dùng hiện tại
               currentUserId = this.dataset.userId;
-              const userName = this.dataset.userName;
-              chatTitle.innerHTML = `<i class="fas fa-comment-dots me-2"></i>Chat với ${userName} <small class="text-white-50">(${currentUserId})</small>`;
+              chatTitle.innerHTML = `<i class="fas fa-comment-dots me-2"></i>Chat với ${currentUserId}`;
               
               // Hiển thị khung nhập tin nhắn
               messageInputContainer.style.display = 'flex';
@@ -298,7 +295,7 @@
         
         // Xử lý sự kiện nhận tin nhắn mới
         socket.on('newMessage', async (data) => {
-          const { message, userId, userName } = data;
+          const { message, userId } = data;
           
           // Cập nhật danh sách người dùng chat
           await fetchChatUsers();
@@ -310,11 +307,6 @@
             
             // Đánh dấu tin nhắn đã đọc
             socket.emit('markAsRead', { userId: message.senderId });
-          } 
-          // Nếu không phải người dùng hiện tại và có userName, hiển thị notification
-          else if (userName) {
-            // Hiển thị notification
-            showNotification(`Tin nhắn mới từ ${userName}`);
           }
         });
         
@@ -361,42 +353,6 @@
           
           // Cuộn xuống cuối cùng
           chatMessages.scrollTop = chatMessages.scrollHeight;
-        }
-        
-        // Hàm hiển thị notification
-        function showNotification(message) {
-          const notification = document.createElement('div');
-          notification.className = 'toast show position-fixed bottom-0 end-0 m-3';
-          notification.style.zIndex = 1050;
-          notification.innerHTML = `
-            <div class="toast-header bg-primary text-white">
-              <i class="fas fa-bell me-2"></i>
-              <strong class="me-auto">Thông báo</strong>
-              <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast"></button>
-            </div>
-            <div class="toast-body">
-              ${message}
-            </div>
-          `;
-          
-          document.body.appendChild(notification);
-          
-          // Tự động đóng sau 5 giây
-          setTimeout(() => {
-            notification.classList.remove('show');
-            setTimeout(() => {
-              notification.remove();
-            }, 500);
-          }, 5000);
-          
-          // Xử lý nút đóng
-          const closeBtn = notification.querySelector('.btn-close');
-          closeBtn.addEventListener('click', () => {
-            notification.classList.remove('show');
-            setTimeout(() => {
-              notification.remove();
-            }, 500);
-          });
         }
         
         // Lấy danh sách người dùng chat khi trang tải
