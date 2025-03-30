@@ -203,7 +203,10 @@ router.put('/update/:id', async (req, res) => {
         .populate('SanhId')
         .populate('caterings')
         .populate('decorates')
-        .populate('presents');
+        .populate({
+            path: 'presents',
+            populate: { path: 'PresentId' }, // Đảm bảo PresentId được populate
+          });
   
       if (!oldPlan) {
         return res.status(404).json({ status: false, message: "Không tìm thấy kế hoạch" });
@@ -311,7 +314,10 @@ router.put('/update/:id', async (req, res) => {
           .populate('SanhId')
           .populate('caterings')
           .populate('decorates')
-          .populate('presents');
+          .populate({
+            path: 'presents',
+            populate: { path: 'PresentId' }, // Đảm bảo PresentId được populate
+          });
   
         console.log('Updated plan:', JSON.stringify(populatedUpdatedPlan, null, 2));
   
@@ -358,7 +364,10 @@ router.put('/update/:id', async (req, res) => {
         .populate('SanhId')
         .populate('caterings')
         .populate('decorates')
-        .populate('presents');
+        .populate({
+            path: 'presents',
+            populate: { path: 'PresentId' }, // Đảm bảo PresentId được populate
+          });
   
       console.log('New plan:', JSON.stringify(populatedNewPlan, null, 2));
   
@@ -396,7 +405,10 @@ router.get('/user/:userId', async (req, res) => {
 
         const caterings = await Plan_catering.find({ PlanId: { $in: planIds } }).populate('CateringId');
         const decorates = await Plan_decorate.find({ PlanId: { $in: planIds } }).populate('DecorateId');
-        const presents = await Plan_present.find({ PlanId: { $in: planIds } }).populate('PresentId');
+        const presents = await Plan_present.find({ PlanId: { $in: planIds } }).populate({
+            path: 'presents',
+            populate: { path: 'PresentId' }, // Đảm bảo PresentId được populate
+          });
 
         // Kết hợp dịch vụ vào từng kế hoạch
         const enrichedPlans = plans.map(plan => {
