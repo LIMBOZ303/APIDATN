@@ -65,12 +65,13 @@ planSchema.pre('findOneAndUpdate', async function (next) {
     }
     next();
   });
-planSchema.methods.calculateTotalPrice = async function () {
+  planSchema.methods.calculateTotalPrice = async function () {
     if (!this.SanhId) {
         this.totalPrice = 0;
         return;
     }
 
+    // Lấy thông tin từ các collection liên quan
     const sanh = await Sanh.findById(this.SanhId, 'price');
     const caterings = await Plan_catering.find({ PlanId: this._id }).populate('CateringId', 'price pricePerTable');
     const decorates = await Plan_decorate.find({ PlanId: this._id }).populate('DecorateId', 'price');
@@ -92,10 +93,18 @@ planSchema.methods.calculateTotalPrice = async function () {
         }
     });
 
+    // Tính tổng giá presents dựa trên quantity
+    const totalPresentPrice = presents.reduce((sum, item) => {
+        const price = item.PresentId?.price || 0; // Giá của PresentId
+        const quantity = item.quantity || 0; // Số lượng từ Plan_PresentSchema
+        return sum + (price * quantity); // Nhân giá với số lượng
+    }, 0);
+
+    // Tính totalPrice
     this.totalPrice = (sanh?.price || 0) +
         totalCateringPrice +
         decorates.reduce((sum, item) => sum + (item.DecorateId?.price || 0), 0) +
-        presents.reduce((sum, item) => sum + (item.PresentId?.price || 0), 0);
+        totalPresentPrice; // Sử dụng totalPresentPrice đã tính dựa trên quantity
 };
 
 

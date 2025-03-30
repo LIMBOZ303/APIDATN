@@ -255,7 +255,12 @@ router.put('/update/:id', async (req, res) => {
       // Ánh xạ các ID từ updateData
       const resolvedCaterings = updateData.caterings ? await resolveIds(updateData.caterings, 'caterings') : [];
       const resolvedDecorates = updateData.decorates ? await resolveIds(updateData.decorates, 'decorates') : [];
-      const resolvedPresents = updateData.presents ? await resolveIds(updateData.presents, 'presents') : [];
+      const resolvedPresents = updateData.presents
+        ? await Promise.all(updateData.presents.map(async (present) => {
+            const resolvedId = (await resolveIds([present.presentId], 'presents'))[0];
+            return { presentId: resolvedId, quantity: present.quantity || 0 };
+          }))
+        : [];
   
       // Nếu không có forceDuplicate và UserId trùng với kế hoạch cũ, cập nhật trực tiếp
       if (!forceDuplicate && oldPlan.UserId.toString() === userId) {
@@ -289,9 +294,10 @@ router.put('/update/:id', async (req, res) => {
           PlanId: planId,
           DecorateId: decorateId,
         }));
-        const newPresents = resolvedPresents.map(presentId => ({
-          PlanId: planId,
-          PresentId: presentId,
+        const newPresents = resolvedPresents.map(present => ({
+            PlanId: planId,
+            PresentId: present.presentId,
+            quantity: present.quantity,
         }));
   
         await Promise.all([
@@ -336,9 +342,10 @@ router.put('/update/:id', async (req, res) => {
         PlanId: newPlan._id,
         DecorateId: decorateId,
       }));
-      const newPresents = resolvedPresents.map(presentId => ({
+      const newPresents = resolvedPresents.map(present => ({
         PlanId: newPlan._id,
-        PresentId: presentId,
+        PresentId: present.presentId,
+        quantity: present.quantity,
       }));
   
       await Promise.all([
