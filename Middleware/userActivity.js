@@ -15,7 +15,7 @@ const trackUserActivity = async (req, res, next) => {
         lastActive: new Date()
       });
     }
-    
+     
     // Tiếp tục xử lý request
     next();
   } catch (error) {
