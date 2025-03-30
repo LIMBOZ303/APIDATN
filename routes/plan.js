@@ -233,7 +233,7 @@ router.put('/update/:id', async (req, res) => {
             field = 'PresentId';
             break;
           case 'Sanh':
-            orderModel = Lobby_order; // Thêm ánh xạ cho Sanh
+            orderModel = Lobby_order;
             field = 'SanhId';
             break;
           default:
@@ -259,7 +259,12 @@ router.put('/update/:id', async (req, res) => {
       // Ánh xạ các ID từ updateData
       const resolvedCaterings = updateData.caterings ? await resolveIds(updateData.caterings, 'caterings') : [];
       const resolvedDecorates = updateData.decorates ? await resolveIds(updateData.decorates, 'decorates') : [];
-      const resolvedPresents = updateData.presents ? await resolveIds(updateData.presents, 'presents') : [];
+      const resolvedPresents = updateData.presents
+        ? await Promise.all(updateData.presents.map(async (present) => {
+            const resolvedId = (await resolveIds([present.presentId], 'presents'))[0];
+            return { presentId: resolvedId, quantity: present.quantity || 1 };
+          }))
+        : [];
   
       // Nếu không có forceDuplicate và UserId trùng với kế hoạch cũ, cập nhật trực tiếp
       if (!forceDuplicate && oldPlan.UserId.toString() === userId) {
@@ -273,6 +278,8 @@ router.put('/update/:id', async (req, res) => {
           plansoluongkhach: updateData.plansoluongkhach || oldPlan.plansoluongkhach,
           name: updateData.name || oldPlan.name,
           planprice: updateData.planprice || oldPlan.planprice,
+          quantity: updateData.quantity || oldPlan.quantity
+          
         });
   
         // Lưu các thay đổi cơ bản của Plan
@@ -293,9 +300,10 @@ router.put('/update/:id', async (req, res) => {
           PlanId: planId,
           DecorateId: decorateId,
         }));
-        const newPresents = resolvedPresents.map(presentId => ({
+        const newPresents = resolvedPresents.map(present => ({
           PlanId: planId,
-          PresentId: presentId,
+          PresentId: present.presentId,
+          quantity: present.quantity, // Thêm quantity
         }));
   
         await Promise.all([
@@ -304,19 +312,35 @@ router.put('/update/:id', async (req, res) => {
           newPresents.length > 0 ? Plan_present.insertMany(newPresents) : Promise.resolve(),
         ]);
   
+        // Lấy lại dữ liệu presents với quantity
+        const updatedPresents = await Plan_present.find({ PlanId: updatedPlan._id })
+          .populate({
+            path: 'PresentId',
+            populate: { path: 'Cate_presentId', select: 'name' }
+          });
+
         // Populate lại dữ liệu trước khi trả về
         const populatedUpdatedPlan = await Plan.findById(updatedPlan._id)
           .populate('SanhId')
           .populate('caterings')
           .populate('decorates')
           .populate('presents');
-  
-        console.log('Updated plan:', JSON.stringify(populatedUpdatedPlan, null, 2));
+
+        // Kết hợp dữ liệu với quantity
+        const responseData = {
+          ...populatedUpdatedPlan.toObject(),
+          presents: updatedPresents.map(item => ({
+            ...(item.PresentId ? item.PresentId.toObject() : {}),
+            quantity: item.quantity
+          }))
+        };
+
+        console.log('Updated plan:', JSON.stringify(responseData, null, 2));
   
         return res.status(200).json({
           status: true,
           message: "Cập nhật kế hoạch thành công",
-          data: populatedUpdatedPlan,
+          data: responseData,
         });
       }
   
@@ -326,10 +350,11 @@ router.put('/update/:id', async (req, res) => {
         SanhId: resolvedSanhId,
         totalPrice: updateData.totalPrice || oldPlan.totalPrice,
         status: updateData.status || oldPlan.status,
-        plandateevent: updateData.plandateevent || oldPlan.plandateevent || new Date() ,
-        plansoluongkhach: updateData.plansoluongkhach || oldPlan.plansoluongkhach || 0 ,
+        plandateevent: updateData.plandateevent || oldPlan.plandateevent || new Date(),
+        plansoluongkhach: updateData.plansoluongkhach || oldPlan.plansoluongkhach || 0,
         name: updateData.name ? `Copy of ${updateData.name}` : `Copy of ${oldPlan.name}`,
         planprice: updateData.planprice || oldPlan.planprice,
+        quantity: updateData.quantity || oldPlan.quantity
       });
   
       const newCaterings = resolvedCaterings.map(cateringId => ({
@@ -340,9 +365,10 @@ router.put('/update/:id', async (req, res) => {
         PlanId: newPlan._id,
         DecorateId: decorateId,
       }));
-      const newPresents = resolvedPresents.map(presentId => ({
+      const newPresents = resolvedPresents.map(present => ({
         PlanId: newPlan._id,
-        PresentId: presentId,
+        PresentId: present.presentId,
+        quantity: present.quantity, // Thêm quantity
       }));
   
       await Promise.all([
@@ -351,24 +377,40 @@ router.put('/update/:id', async (req, res) => {
         newPresents.length > 0 ? Plan_present.insertMany(newPresents) : Promise.resolve(),
       ]);
   
+      // Lấy lại dữ liệu presents với quantity
+      const newPresentsData = await Plan_present.find({ PlanId: newPlan._id })
+        .populate({
+          path: 'PresentId',
+          populate: { path: 'Cate_presentId', select: 'name' }
+        });
+
       const populatedNewPlan = await Plan.findById(newPlan._id)
         .populate('SanhId')
         .populate('caterings')
         .populate('decorates')
         .populate('presents');
   
-      console.log('New plan:', JSON.stringify(populatedNewPlan, null, 2));
+      // Kết hợp dữ liệu với quantity
+      const newResponseData = {
+        ...populatedNewPlan.toObject(),
+        presents: newPresentsData.map(item => ({
+          ...(item.PresentId ? item.PresentId.toObject() : {}),
+          quantity: item.quantity
+        }))
+      };
+
+      console.log('New plan:', JSON.stringify(newResponseData, null, 2));
   
       res.status(200).json({
         status: true,
         message: "Đã tạo kế hoạch sao chép",
-        data: populatedNewPlan,
+        data: newResponseData,
       });
     } catch (error) {
       console.error("Lỗi khi cập nhật kế hoạch:", error);
       res.status(500).json({ status: false, message: "Lỗi khi cập nhật kế hoạch", error: error.message });
     }
-  });
+});
 // Lấy danh sách kế hoạch theo UserId
 router.get('/user/:userId', async (req, res) => {
     try {
