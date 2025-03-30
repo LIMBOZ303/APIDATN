@@ -209,7 +209,7 @@ router.put('/update/:id', async (req, res) => {
         .populate('decorates')
         .populate({
           path: 'presents',
-          populate: { path: 'PresentId' }, // Populate PresentId để lấy thông tin chi tiết
+          populate: { path: 'PresentId' },
         });
   
       if (!oldPlan) {
@@ -262,21 +262,23 @@ router.put('/update/:id', async (req, res) => {
       // Ánh xạ các ID từ updateData
       const resolvedCaterings = updateData.caterings
         ? await resolveIds(updateData.caterings, 'caterings')
-        : oldPlan.caterings.map(c => c.CateringId); // Giữ nguyên nếu không thay đổi
+        : oldPlan.caterings.map(c => c.CateringId);
       const resolvedDecorates = updateData.decorates
         ? await resolveIds(updateData.decorates, 'decorates')
-        : oldPlan.decorates.map(d => d.DecorateId); // Giữ nguyên nếu không thay đổi
+        : oldPlan.decorates.map(d => d.DecorateId);
       const resolvedPresents = updateData.presents
         ? await Promise.all(
             updateData.presents.map(async (present) => ({
               presentId: (await resolveIds([present.presentId], 'presents'))[0],
-              quantity: present.quantity || 1, // Lấy quantity từ dữ liệu gửi lên
+              quantity: present.quantity || 1, // Lấy quantity từ client
             }))
           )
         : oldPlan.presents.map(p => ({
             presentId: p.PresentId._id,
-            quantity: p.quantity || 1, // Giữ nguyên quantity cũ nếu không thay đổi
+            quantity: p.quantity || 1,
           }));
+  
+      console.log('Resolved presents:', JSON.stringify(resolvedPresents, null, 2)); // Log để kiểm tra
   
       // Nếu không có forceDuplicate và UserId trùng với kế hoạch cũ, cập nhật trực tiếp
       if (!forceDuplicate && oldPlan.UserId.toString() === userId) {
@@ -313,8 +315,10 @@ router.put('/update/:id', async (req, res) => {
         const newPresents = resolvedPresents.map(present => ({
           PlanId: planId,
           PresentId: present.presentId,
-          quantity: present.quantity || 1, // Lưu quantity
+          quantity: present.quantity || 1, // Đảm bảo lưu quantity
         }));
+  
+        console.log('New presents to save:', JSON.stringify(newPresents, null, 2)); // Log để kiểm tra
   
         await Promise.all([
           newCaterings.length > 0 ? Plan_catering.insertMany(newCaterings) : Promise.resolve(),
@@ -329,7 +333,7 @@ router.put('/update/:id', async (req, res) => {
           .populate('decorates')
           .populate({
             path: 'presents',
-            populate: { path: 'PresentId' }, // Populate PresentId để lấy thông tin chi tiết
+            populate: { path: 'PresentId' },
           });
   
         console.log('Updated plan:', JSON.stringify(populatedUpdatedPlan, null, 2));
@@ -364,7 +368,7 @@ router.put('/update/:id', async (req, res) => {
       const newPresents = resolvedPresents.map(present => ({
         PlanId: newPlan._id,
         PresentId: present.presentId,
-        quantity: present.quantity || 1, // Lưu quantity
+        quantity: present.quantity || 1,
       }));
   
       await Promise.all([
@@ -379,7 +383,7 @@ router.put('/update/:id', async (req, res) => {
         .populate('decorates')
         .populate({
           path: 'presents',
-          populate: { path: 'PresentId' }, // Populate PresentId để lấy thông tin chi tiết
+          populate: { path: 'PresentId' },
         });
   
       console.log('New plan:', JSON.stringify(populatedNewPlan, null, 2));
