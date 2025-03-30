@@ -6,7 +6,7 @@ const Sanh = require('../models/Sanh');
 
 const planSchema = new mongoose.Schema({
     name: { type: String, required: false },
-    SanhId: { type: mongoose.Schema.Types.ObjectId, ref: 'Sanh', required: true },
+    SanhId: { type: mongoose.Schema.Types.ObjectId, ref: 'Sanh', required: false },
     UserId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: false },
     totalPrice: { type: Number, required: false, default: 0 },
     status: { type: String, enum: ['active', 'pending', 'inactive'], default: 'inactive' },
