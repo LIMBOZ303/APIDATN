@@ -18,8 +18,20 @@ const planSchema = new mongoose.Schema({
 
     caterings: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Plan_Catering' }],
     decorates: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Plan_decorate' }],
-    presents: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Plan_PresentSchema' }]
+    presents: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Plan_PresentSchema' }],
+    priceDifference: { type: Number, default: 0 }, // Thêm priceDifference
 }, { timestamps: true });
+
+
+// Middleware tính toán priceDifference
+planSchema.pre('save', function (next) {
+    if (typeof this.plandateevent === 'string') {
+      const [day, month, year] = this.plandateevent.split('/');
+      this.plandateevent = new Date(`${year}-${month}-${day}T00:00:00.000Z`);
+    }
+    this.priceDifference = (this.planprice || 0) - (this.totalPrice || 0); // Tính priceDifference
+    next();
+  });
 
 // 🛠 Middleware: Chuyển `dd/mm/yyyy` thành Date trước khi lưu
 planSchema.pre('save', function (next) {
@@ -39,37 +51,51 @@ planSchema.pre('save', async function (next) {
     next();
 });
 
-// Middleware cập nhật totalPrice khi update
+// Middleware cập nhật totalPrice và priceDifference khi update
 planSchema.pre('findOneAndUpdate', async function (next) {
     const update = this.getUpdate();
     const planId = this.getQuery()._id;
     if (!planId) return next();
-    
+  
     const plan = await mongoose.model('Plan').findById(planId);
     if (plan) {
-        await plan.calculateTotalPrice();
-        await plan.save();
+      await plan.calculateTotalPrice();
+      plan.priceDifference = (plan.planprice || 0) - (plan.totalPrice || 0); // Cập nhật priceDifference
+      await plan.save();
     }
     next();
-});
-
+  });
 planSchema.methods.calculateTotalPrice = async function () {
-    if (!this.SanhId) return;
-    
+    if (!this.SanhId) {
+        this.totalPrice = 0;
+        return;
+    }
+
     const sanh = await Sanh.findById(this.SanhId, 'price');
-    const caterings = await Plan_catering.find({ PlanId: this._id }).populate('CateringId', 'price');
+    const caterings = await Plan_catering.find({ PlanId: this._id }).populate('CateringId', 'price pricePerTable');
     const decorates = await Plan_decorate.find({ PlanId: this._id }).populate('DecorateId', 'price');
     const presents = await Plan_present.find({ PlanId: this._id }).populate('PresentId', 'price');
 
-    // Số bàn ăn dựa trên số lượng khách
-    // const soLuongBan = this.plansoluongkhach ? Math.ceil(this.plansoluongkhach / 10) : 0;
+    // Tính số bàn
+    const soLuongBan = this.plansoluongkhach ? Math.ceil(this.plansoluongkhach / 10) : 0;
 
-    const totalPrice = (sanh?.price || 0) +
-        caterings.reduce((sum, item) => sum + (item.CateringId?.price || 0), 0) + // Giá món ăn theo số bàn
+    // Tính tổng giá catering
+    let totalCateringPrice = 0;
+    caterings.forEach(item => {
+        if (item.CateringId) {
+            if (item.CateringId.pricePerTable) {
+                const priceEntry = item.CateringId.pricePerTable.find(p => p.numberOfTables === soLuongBan);
+                totalCateringPrice += priceEntry ? priceEntry.price : Math.max(...item.CateringId.pricePerTable.map(p => p.price), 0);
+            } else {
+                totalCateringPrice += (item.CateringId.price || 0) * soLuongBan;
+            }
+        }
+    });
+
+    this.totalPrice = (sanh?.price || 0) +
+        totalCateringPrice +
         decorates.reduce((sum, item) => sum + (item.DecorateId?.price || 0), 0) +
         presents.reduce((sum, item) => sum + (item.PresentId?.price || 0), 0);
-
-    this.totalPrice = totalPrice;
 };
 
 
