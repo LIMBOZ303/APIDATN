@@ -124,6 +124,7 @@ router.get('/all', async (req, res) => {
 
 
 // Lấy kế hoạch theo ID
+// Lấy kế hoạch theo ID
 router.get('/:id', async (req, res) => {
     try {
         const planId = req.params.id;
@@ -176,7 +177,10 @@ router.get('/:id', async (req, res) => {
                 totalPrice: plan.totalPrice, // Đảm bảo hiển thị tổng giá
                 caterings: caterings.map(item => item.CateringId),
                 decorates: decorates.map(item => item.DecorateId),
-                presents: presents.map(item => item.PresentId)
+                presents: presents.map(item => ({
+                    ...(item.PresentId ? item.PresentId.toObject() : {}), // Nếu PresentId undefined, trả về object rỗng
+                    quantity: item.quantity // Thêm quantity từ Plan_present
+                }))
             }
         });
 
@@ -203,10 +207,7 @@ router.put('/update/:id', async (req, res) => {
         .populate('SanhId')
         .populate('caterings')
         .populate('decorates')
-        .populate({
-            path: 'presents',
-            populate: { path: 'PresentId' }, // Đảm bảo PresentId được populate
-          });
+        .populate('presents');
   
       if (!oldPlan) {
         return res.status(404).json({ status: false, message: "Không tìm thấy kế hoạch" });
@@ -258,12 +259,7 @@ router.put('/update/:id', async (req, res) => {
       // Ánh xạ các ID từ updateData
       const resolvedCaterings = updateData.caterings ? await resolveIds(updateData.caterings, 'caterings') : [];
       const resolvedDecorates = updateData.decorates ? await resolveIds(updateData.decorates, 'decorates') : [];
-      const resolvedPresents = updateData.presents
-        ? await Promise.all(updateData.presents.map(async (presents) => {
-            const resolvedId = (await resolveIds([presents.presentId], 'presents'))[0];
-            return { presentId: resolvedId, quantity: presents.quantity || 0 };
-          }))
-        : [];
+      const resolvedPresents = updateData.presents ? await resolveIds(updateData.presents, 'presents') : [];
   
       // Nếu không có forceDuplicate và UserId trùng với kế hoạch cũ, cập nhật trực tiếp
       if (!forceDuplicate && oldPlan.UserId.toString() === userId) {
@@ -297,10 +293,9 @@ router.put('/update/:id', async (req, res) => {
           PlanId: planId,
           DecorateId: decorateId,
         }));
-        const newPresents = resolvedPresents.map(presents => ({
-            PlanId: planId,
-            PresentId: presents.presentId,
-            quantity: presents.quantity,
+        const newPresents = resolvedPresents.map(presentId => ({
+          PlanId: planId,
+          PresentId: presentId,
         }));
   
         await Promise.all([
@@ -314,10 +309,7 @@ router.put('/update/:id', async (req, res) => {
           .populate('SanhId')
           .populate('caterings')
           .populate('decorates')
-          .populate({
-            path: 'presents',
-            populate: { path: 'PresentId' }, // Đảm bảo PresentId được populate
-          });
+          .populate('presents');
   
         console.log('Updated plan:', JSON.stringify(populatedUpdatedPlan, null, 2));
   
@@ -334,8 +326,8 @@ router.put('/update/:id', async (req, res) => {
         SanhId: resolvedSanhId,
         totalPrice: updateData.totalPrice || oldPlan.totalPrice,
         status: updateData.status || oldPlan.status,
-        plandateevent: updateData.plandateevent || oldPlan.plandateevent,
-        plansoluongkhach: updateData.plansoluongkhach || oldPlan.plansoluongkhach,
+        plandateevent: updateData.plandateevent || oldPlan.plandateevent || new Date() ,
+        plansoluongkhach: updateData.plansoluongkhach || oldPlan.plansoluongkhach || 0 ,
         name: updateData.name ? `Copy of ${updateData.name}` : `Copy of ${oldPlan.name}`,
         planprice: updateData.planprice || oldPlan.planprice,
       });
@@ -348,10 +340,9 @@ router.put('/update/:id', async (req, res) => {
         PlanId: newPlan._id,
         DecorateId: decorateId,
       }));
-      const newPresents = resolvedPresents.map(presents => ({
+      const newPresents = resolvedPresents.map(presentId => ({
         PlanId: newPlan._id,
-        PresentId: presents.presentId,
-        quantity: presents.quantity,
+        PresentId: presentId,
       }));
   
       await Promise.all([
@@ -364,10 +355,7 @@ router.put('/update/:id', async (req, res) => {
         .populate('SanhId')
         .populate('caterings')
         .populate('decorates')
-        .populate({
-            path: 'presents',
-            populate: { path: 'PresentId' }, // Đảm bảo PresentId được populate
-          });
+        .populate('presents');
   
       console.log('New plan:', JSON.stringify(populatedNewPlan, null, 2));
   

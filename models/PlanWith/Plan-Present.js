@@ -9,9 +9,9 @@ const Plan_PresentSchema = new mongoose.Schema({
     PresentId: { 
         type: mongoose.Schema.Types.ObjectId, 
         ref: 'present', 
-        required: false
+        required: true
     },
-    quantity : {type: Number, require: false, defautl : 0},
+    quantity : {type: Number, require: false},
     
 }, { timestamps: true });
 // 🔄 Hàm cập nhật totalPrice
