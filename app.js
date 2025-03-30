@@ -5,6 +5,8 @@ var cookieParser = require('cookie-parser');
 var logger = require('morgan');
 const mongoose = require('mongoose');
 const hbs = require('hbs'); 
+const { trackUserActivity } = require('./Middleware/userActivity');
+const { initUserActivityScheduler } = require('./utils/userActivityScheduler');
 var indexRouter = require('./routes/index');
 var usersRouter = require('./routes/users');
 var planRouter = require('./routes/plan');
@@ -52,6 +54,9 @@ app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 
+// Middleware theo dõi hoạt động người dùng
+app.use(trackUserActivity);
+
 app.use('/', indexRouter);
 app.use('/users', usersRouter);
 app.use('/plan', planRouter);
@@ -76,6 +81,8 @@ app.use('/chat', chatRouter)
 mongoose.connect('mongodb+srv://tran07hieu:beVLTEzrT7C0eCzZ@cluster0.tnems.mongodb.net/userDB')
     .then(() => {
         console.log('Connected to MongoDB');
+        // Khởi tạo scheduler kiểm tra hoạt động người dùng
+        initUserActivityScheduler();
     })
     .catch(err => {
         console.error('Error connecting to MongoDB:', err);

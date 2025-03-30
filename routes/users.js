@@ -343,5 +343,161 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
+// API cập nhật trạng thái online của người dùng
+router.patch('/status/online/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // Kiểm tra user có tồn tại không
+    const user = await User.findById(id);
+    if (!user) {
+      return res.status(404).json({ status: false, message: "Không tìm thấy người dùng" });
+    }
+    
+    // Cập nhật trạng thái online và thời gian hoạt động cuối cùng
+    user.isOnline = true;
+    user.lastActive = new Date();
+    await user.save();
+    
+    res.status(200).json({ 
+      status: true, 
+      message: "Cập nhật trạng thái online thành công",
+      data: {
+        userId: user._id,
+        isOnline: user.isOnline,
+        lastActive: user.lastActive
+      }
+    });
+  } catch (error) {
+    console.error("Lỗi khi cập nhật trạng thái online:", error);
+    res.status(500).json({ status: false, message: "Lỗi server", error: error.message });
+  }
+});
+
+// API cập nhật trạng thái offline của người dùng
+router.patch('/status/offline/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // Kiểm tra user có tồn tại không
+    const user = await User.findById(id);
+    if (!user) {
+      return res.status(404).json({ status: false, message: "Không tìm thấy người dùng" });
+    }
+    
+    // Cập nhật trạng thái offline và thời gian hoạt động cuối cùng
+    user.isOnline = false;
+    user.lastActive = new Date();
+    await user.save();
+    
+    res.status(200).json({ 
+      status: true, 
+      message: "Cập nhật trạng thái offline thành công",
+      data: {
+        userId: user._id,
+        isOnline: user.isOnline,
+        lastActive: user.lastActive
+      }
+    });
+  } catch (error) {
+    console.error("Lỗi khi cập nhật trạng thái offline:", error);
+    res.status(500).json({ status: false, message: "Lỗi server", error: error.message });
+  }
+});
+
+// API cập nhật thời gian hoạt động cuối cùng (khi người dùng thực hiện các hành động)
+router.patch('/status/active/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // Kiểm tra user có tồn tại không
+    const user = await User.findById(id);
+    if (!user) {
+      return res.status(404).json({ status: false, message: "Không tìm thấy người dùng" });
+    }
+    
+    // Chỉ cập nhật thời gian hoạt động cuối cùng
+    user.lastActive = new Date();
+    await user.save();
+    
+    res.status(200).json({ 
+      status: true, 
+      message: "Cập nhật thời gian hoạt động thành công",
+      data: {
+        userId: user._id,
+        lastActive: user.lastActive
+      }
+    });
+  } catch (error) {
+    console.error("Lỗi khi cập nhật thời gian hoạt động:", error);
+    res.status(500).json({ status: false, message: "Lỗi server", error: error.message });
+  }
+});
+
+// API kiểm tra trạng thái hoạt động của người dùng
+router.get('/status/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // Kiểm tra user có tồn tại không
+    const user = await User.findById(id);
+    if (!user) {
+      return res.status(404).json({ status: false, message: "Không tìm thấy người dùng" });
+    }
+    
+    // Tính thời gian không hoạt động
+    const currentTime = new Date();
+    const lastActiveTime = new Date(user.lastActive);
+    const inactiveTime = Math.floor((currentTime - lastActiveTime) / 1000); // Thời gian không hoạt động tính bằng giây
+    
+    res.status(200).json({ 
+      status: true, 
+      message: "Lấy trạng thái hoạt động thành công",
+      data: {
+        userId: user._id,
+        isOnline: user.isOnline,
+        lastActive: user.lastActive,
+        inactiveTimeInSeconds: inactiveTime,
+        inactiveTimeFormatted: formatInactiveTime(inactiveTime)
+      }
+    });
+  } catch (error) {
+    console.error("Lỗi khi kiểm tra trạng thái hoạt động:", error);
+    res.status(500).json({ status: false, message: "Lỗi server", error: error.message });
+  }
+});
+
+// API lấy danh sách người dùng đang online
+router.get('/online/all', async (req, res) => {
+  try {
+    const onlineUsers = await User.find({ isOnline: true }).select('_id name email avatar lastActive');
+    
+    res.status(200).json({ 
+      status: true, 
+      message: "Lấy danh sách người dùng online thành công",
+      count: onlineUsers.length,
+      data: onlineUsers
+    });
+  } catch (error) {
+    console.error("Lỗi khi lấy danh sách người dùng online:", error);
+    res.status(500).json({ status: false, message: "Lỗi server", error: error.message });
+  }
+});
+
+// Hàm hỗ trợ định dạng thời gian không hoạt động
+function formatInactiveTime(seconds) {
+  if (seconds < 60) {
+    return `${seconds} giây`;
+  } else if (seconds < 3600) {
+    const minutes = Math.floor(seconds / 60);
+    return `${minutes} phút`;
+  } else if (seconds < 86400) {
+    const hours = Math.floor(seconds / 3600);
+    return `${hours} giờ`;
+  } else {
+    const days = Math.floor(seconds / 86400);
+    return `${days} ngày`;
+  }
+}
 
 module.exports = router;

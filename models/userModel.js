@@ -10,6 +10,10 @@ const userSchema = new mongoose.Schema({
    avatar: { type: String, default: 'https://static-00.iconduck.com/assets.00/user-icon-2046x2048-9pwm22pp.png' },
    isVerified: { type: Boolean, default: false },
    
+    // Trạng thái hoạt động của người dùng
+    lastActive: { type: Date, default: Date.now },
+    isOnline: { type: Boolean, default: false },
+    
    // Danh sách đơn hàng đã đặt
    Catering_orders: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Catering_order' }],
    Decorate_orders: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Decorate_order' }],
