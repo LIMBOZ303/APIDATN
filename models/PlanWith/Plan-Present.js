@@ -9,7 +9,7 @@ const Plan_PresentSchema = new mongoose.Schema({
     PresentId: { 
         type: mongoose.Schema.Types.ObjectId, 
         ref: 'present', 
-        required: true 
+        required: false
     },
     quantity : {type: Number, require: false, defautl : 0},
     
