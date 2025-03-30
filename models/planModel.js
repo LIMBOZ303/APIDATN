@@ -9,36 +9,23 @@ const planSchema = new mongoose.Schema({
     SanhId: { type: mongoose.Schema.Types.ObjectId, ref: 'Sanh', required: true },
     UserId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: false },
     totalPrice: { type: Number, required: false, default: 0 },
-    status: { type: String, enum: ['active','pending', 'inactive'], default: 'inactive' },
+    status: { type: String, enum: ['active', 'pending', 'inactive'], default: 'inactive' },
     planprice: { type: Number, required: false },
     plansoluongkhach: { type: Number, required: false },
-    
-    // Lưu `plandateevent` dưới dạng Date và tối ưu tìm kiếm
     plandateevent: { type: Date, required: false, index: true },
-
     caterings: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Plan_Catering' }],
     decorates: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Plan_decorate' }],
     presents: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Plan_PresentSchema' }],
-    priceDifference: { type: Number, default: 0 }, // Thêm priceDifference
+    priceDifference: { type: Number, default: 0 },
 }, { timestamps: true });
 
-
-// Middleware tính toán priceDifference
-planSchema.pre('save', function (next) {
-    if (typeof this.plandateevent === 'string') {
-      const [day, month, year] = this.plandateevent.split('/');
-      this.plandateevent = new Date(`${year}-${month}-${day}T00:00:00.000Z`);
-    }
-    this.priceDifference = (this.planprice || 0) - (this.totalPrice || 0); // Tính priceDifference
-    next();
-  });
-
-// 🛠 Middleware: Chuyển `dd/mm/yyyy` thành Date trước khi lưu
+// Middleware xử lý plandateevent và tính priceDifference
 planSchema.pre('save', function (next) {
     if (typeof this.plandateevent === 'string') {
         const [day, month, year] = this.plandateevent.split('/');
         this.plandateevent = new Date(`${year}-${month}-${day}T00:00:00.000Z`);
     }
+    this.priceDifference = (this.planprice || 0) - (this.totalPrice || 0);
     next();
 });
 
@@ -53,30 +40,32 @@ planSchema.pre('save', async function (next) {
 
 // Middleware cập nhật totalPrice và priceDifference khi update
 planSchema.pre('findOneAndUpdate', async function (next) {
-    const update = this.getUpdate();
     const planId = this.getQuery()._id;
     if (!planId) return next();
-  
+
     const plan = await mongoose.model('Plan').findById(planId);
     if (plan) {
-      await plan.calculateTotalPrice();
-      plan.priceDifference = (plan.planprice || 0) - (plan.totalPrice || 0); // Cập nhật priceDifference
-      await plan.save();
+        await plan.calculateTotalPrice();
+        plan.priceDifference = (plan.planprice || 0) - (plan.totalPrice || 0);
+        await plan.save();
     }
     next();
-  });
+});
+
+// Hàm tính totalPrice
 planSchema.methods.calculateTotalPrice = async function () {
     if (!this.SanhId) {
         this.totalPrice = 0;
         return;
     }
 
+    // Lấy thông tin từ các model liên quan
     const sanh = await Sanh.findById(this.SanhId, 'price');
     const caterings = await Plan_catering.find({ PlanId: this._id }).populate('CateringId', 'price pricePerTable');
     const decorates = await Plan_decorate.find({ PlanId: this._id }).populate('DecorateId', 'price');
     const presents = await Plan_present.find({ PlanId: this._id }).populate('PresentId', 'price');
 
-    // Tính số bàn
+    // Tính số bàn dựa trên plansoluongkhach
     const soLuongBan = this.plansoluongkhach ? Math.ceil(this.plansoluongkhach / 10) : 0;
 
     // Tính tổng giá catering
@@ -92,33 +81,36 @@ planSchema.methods.calculateTotalPrice = async function () {
         }
     });
 
-    this.totalPrice = (sanh?.price || 0) +
-        totalCateringPrice +
-        decorates.reduce((sum, item) => sum + (item.DecorateId?.price || 0), 0) +
-        presents.reduce((sum, item) => sum + (item.PresentId?.price || 0), 0);
+    // Tính tổng giá decorate
+    const totalDecoratePrice = decorates.reduce((sum, item) => sum + (item.DecorateId?.price || 0), 0);
+
+    // Tính tổng giá present (bao gồm quantity)
+    const totalPresentPrice = presents.reduce((sum, item) => {
+        return sum + ((item.PresentId?.price || 0) * (item.quantity || 0));
+    }, 0);
+
+    // Cập nhật totalPrice
+    this.totalPrice = (sanh?.price || 0) + totalCateringPrice + totalDecoratePrice + totalPresentPrice;
 };
 
-
-// 🛠 Virtual field: Trả về `plandateevent` dạng `dd/mm/yyyy`
+// Virtual field: Trả về plandateevent dạng dd/mm/yyyy
 planSchema.virtual('plandateeventFormatted').get(function () {
     if (!this.plandateevent) return null;
     const date = new Date(this.plandateevent);
-    return date.toLocaleDateString('vi-VN'); // Format thành dd/mm/yyyy
+    return date.toLocaleDateString('vi-VN');
 });
 
-// 🛠 Chuyển đổi khi xuất JSON
+// Chuyển đổi khi xuất JSON
 planSchema.set('toJSON', {
     virtuals: true,
     transform: function (doc, ret) {
         if (ret.plandateevent) {
             const date = new Date(ret.plandateevent);
-            ret.plandateevent = date.toLocaleDateString('vi-VN'); // Format thành dd/mm/yyyy
+            ret.plandateevent = date.toLocaleDateString('vi-VN');
         }
         return ret;
     }
 });
-
-
 
 const Plan = mongoose.model('Plan', planSchema);
 module.exports = Plan;

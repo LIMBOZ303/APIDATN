@@ -11,6 +11,8 @@ const Plan_PresentSchema = new mongoose.Schema({
         ref: 'present', 
         required: true 
     },
+    quantity : {type: Number, require: false, defautl : 0},
+    
 }, { timestamps: true });
 // 🔄 Hàm cập nhật totalPrice
 async function updatePlanTotalPrice(planId) {

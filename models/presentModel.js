@@ -6,6 +6,7 @@ const presentSchema = new mongoose.Schema({
     Cate_presentId: { type: mongoose.Schema.Types.ObjectId, ref: "cate_present", required: true },
     Description: { type: String, required: false },
     Status: { type: String, required: false },
+    
     imageUrl: { type: String, required: true },
     
 }, { timestamps: true });
