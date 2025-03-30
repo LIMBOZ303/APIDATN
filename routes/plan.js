@@ -256,9 +256,9 @@ router.put('/update/:id', async (req, res) => {
       const resolvedCaterings = updateData.caterings ? await resolveIds(updateData.caterings, 'caterings') : [];
       const resolvedDecorates = updateData.decorates ? await resolveIds(updateData.decorates, 'decorates') : [];
       const resolvedPresents = updateData.presents
-        ? await Promise.all(updateData.presents.map(async (present) => {
-            const resolvedId = (await resolveIds([present.presentId], 'presents'))[0];
-            return { presentId: resolvedId, quantity: present.quantity || 0 };
+        ? await Promise.all(updateData.presents.map(async (presents) => {
+            const resolvedId = (await resolveIds([presents.presentId], 'presents'))[0];
+            return { presentId: resolvedId, quantity: presents.quantity || 0 };
           }))
         : [];
   
@@ -294,10 +294,10 @@ router.put('/update/:id', async (req, res) => {
           PlanId: planId,
           DecorateId: decorateId,
         }));
-        const newPresents = resolvedPresents.map(present => ({
+        const newPresents = resolvedPresents.map(presents => ({
             PlanId: planId,
-            PresentId: present.presentId,
-            quantity: present.quantity,
+            PresentId: presents.presentId,
+            quantity: presents.quantity,
         }));
   
         await Promise.all([
@@ -342,10 +342,10 @@ router.put('/update/:id', async (req, res) => {
         PlanId: newPlan._id,
         DecorateId: decorateId,
       }));
-      const newPresents = resolvedPresents.map(present => ({
+      const newPresents = resolvedPresents.map(presents => ({
         PlanId: newPlan._id,
-        PresentId: present.presentId,
-        quantity: present.quantity,
+        PresentId: presents.presentId,
+        quantity: presents.quantity,
       }));
   
       await Promise.all([
