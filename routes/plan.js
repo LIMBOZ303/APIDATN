@@ -405,10 +405,7 @@ router.get('/user/:userId', async (req, res) => {
 
         const caterings = await Plan_catering.find({ PlanId: { $in: planIds } }).populate('CateringId');
         const decorates = await Plan_decorate.find({ PlanId: { $in: planIds } }).populate('DecorateId');
-        const presents = await Plan_present.find({ PlanId: { $in: planIds } }).populate({
-            path: 'presents',
-            populate: { path: 'PresentId' }, // Đảm bảo PresentId được populate
-          });
+        const presents = await Plan_present.find({ PlanId: { $in: planIds } }).populate('PresentId');
 
         // Kết hợp dịch vụ vào từng kế hoạch
         const enrichedPlans = plans.map(plan => {
