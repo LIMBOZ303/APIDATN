@@ -167,6 +167,7 @@ router.get('/:id', async (req, res) => {
             await plan.save();
         }
 
+        // Trả về dữ liệu đầy đủ giống API `/khaosat`
         res.status(200).json({
             status: true,
             message: "Lấy kế hoạch và dịch vụ thành công",
@@ -175,10 +176,7 @@ router.get('/:id', async (req, res) => {
                 totalPrice: plan.totalPrice, // Đảm bảo hiển thị tổng giá
                 caterings: caterings.map(item => item.CateringId),
                 decorates: decorates.map(item => item.DecorateId),
-                presents: presents.map(item => ({
-                    ...item.PresentId.toObject(), // Thông tin của PresentId
-                    quantity: item.quantity // Thêm quantity từ Plan_present
-                }))
+                presents: presents.map(item => item.PresentId)
             }
         });
 
