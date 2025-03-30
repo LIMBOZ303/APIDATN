@@ -2,7 +2,7 @@
  * Scheduler để kiểm tra và đánh dấu người dùng không hoạt động
  */
 
-const { markInactiveUsers } = require('../middleware/userActivity');
+const { markInactiveUsers } = require('../Middleware/userActivity');
 
 // Thời gian kiểm tra hoạt động (tính bằng phút)
 const INACTIVE_TIME_LIMIT = 15; // 15 phút không hoạt động
