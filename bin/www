@@ -75,7 +75,7 @@ io.on('connection', (socket) => {
   // Xử lý khi admin hoặc user gửi tin nhắn
   socket.on('sendMessage', async (data) => {
     try {
-      const { senderId, receiverId, message, senderType } = data;
+      const { senderId, receiverId, message, senderType, messageType = 'text' } = data;
       
       // Lưu tin nhắn vào database
       const newMessage = await ChatMessage.create({
@@ -83,6 +83,7 @@ io.on('connection', (socket) => {
         receiverId,
         message,
         senderType,
+        messageType,
         read: false
       });
       

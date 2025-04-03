@@ -17,7 +17,14 @@ const chatMessageSchema = new mongoose.Schema({
         enum: ['user', 'admin'],
         required: true
     },
-    // Nội dung tin nhắn
+    // Loại tin nhắn: 'text' hoặc 'image'
+    messageType: {
+        type: String,
+        enum: ['text', 'image'],
+        default: 'text',
+        required: true
+    },
+    // Nội dung tin nhắn (văn bản hoặc ảnh dạng base64)
     message: { 
         type: String, 
         required: true 

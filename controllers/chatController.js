@@ -104,7 +104,7 @@ exports.getAllChatUsers = async (req, res) => {
 // Lưu tin nhắn mới
 exports.saveMessage = async (req, res) => {
     try {
-        const { senderId, receiverId, message, senderType } = req.body;
+        const { senderId, receiverId, message, senderType, messageType = 'text' } = req.body;
         
         if (!senderId || !receiverId || !message || !senderType) {
             return res.status(400).json({
@@ -113,12 +113,25 @@ exports.saveMessage = async (req, res) => {
             });
         }
         
+        // Kiểm tra nếu là ảnh, đảm bảo thông tin base64 hợp lệ
+        if (messageType === 'image') {
+            const base64Regex = /^data:image\/(png|jpeg|jpg|gif);base64,/;
+            
+            if (!base64Regex.test(message)) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Định dạng ảnh không hợp lệ'
+                });
+            }
+        }
+        
         // Tạo tin nhắn mới
         const newMessage = await ChatMessage.create({
             senderId,
             receiverId,
             message,
             senderType,
+            messageType,
             read: false
         });
         

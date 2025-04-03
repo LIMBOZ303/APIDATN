@@ -1,0 +1,404 @@
+{{#extend "layout"}}
+  {{#content "content"}}
+    <div class="container py-4">
+      <div class="row justify-content-center">
+        <div class="col-md-8">
+          <div class="card border-0 shadow-sm">
+            <div class="card-header bg-primary text-white">
+              <h5 class="card-title mb-0"><i class="fas fa-headset me-2"></i>Chat với hỗ trợ viên</h5>
+            </div>
+            <div class="card-body chat-body" id="chat-messages" style="height: 400px; overflow-y: auto; background-color: #f8f9fa;">
+              <!-- Tin nhắn sẽ được hiển thị ở đây -->
+              <div class="text-center p-5">
+                <i class="far fa-comments text-muted" style="font-size: 5rem;"></i>
+                <p class="mt-3 text-muted">Gửi tin nhắn để bắt đầu cuộc hội thoại với hỗ trợ viên</p>
+              </div>
+            </div>
+            <div class="card-footer bg-white">
+              <div class="input-group">
+                <input type="text" class="form-control" id="message-input" placeholder="Nhập tin nhắn...">
+                <button class="btn btn-outline-primary" id="image-upload-btn" title="Gửi ảnh">
+                  <i class="fas fa-image"></i>
+                </button>
+                <input type="file" id="image-upload" accept="image/*" style="display: none;">
+                <button class="btn btn-primary" id="send-message-btn">
+                  <i class="fas fa-paper-plane me-1"></i> Gửi
+                </button>
+              </div>
+              <!-- Hiển thị xem trước ảnh -->
+              <div id="image-preview-container" class="mt-2" style="display: none;">
+                <div class="d-flex align-items-center">
+                  <div class="image-preview-wrapper position-relative me-2">
+                    <img id="image-preview" class="img-thumbnail" style="height: 100px;">
+                    <button class="btn btn-sm btn-danger position-absolute top-0 end-0" id="remove-image-btn">
+                      <i class="fas fa-times"></i>
+                    </button>
+                  </div>
+                  <small class="text-muted">Ảnh đã sẵn sàng để gửi</small>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Include Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+    <!-- Include Socket.IO client -->
+    <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script>
+    
+    <!-- Chat JavaScript -->
+    <script>
+      document.addEventListener('DOMContentLoaded', function() {
+        // Lấy userId từ localStorage hoặc từ url query params
+        const userId = localStorage.getItem('userId') || getQueryParam('userId') || generateUserId();
+        localStorage.setItem('userId', userId);
+        
+        // Lưu userID vào local storage
+        function generateUserId() {
+          return 'user_' + Math.random().toString(36).substring(2, 10);
+        }
+        
+        function getQueryParam(name) {
+          const urlParams = new URLSearchParams(window.location.search);
+          return urlParams.get(name);
+        }
+        
+        // Kết nối Socket.IO
+        const socket = io();
+        
+        // Đăng ký kết nối với userId
+        socket.emit('registerUser', userId);
+        
+        let currentImageData = null;
+        
+        // Các element DOM
+        const chatMessages = document.getElementById('chat-messages');
+        const messageInput = document.getElementById('message-input');
+        const sendMessageBtn = document.getElementById('send-message-btn');
+        const imageUploadBtn = document.getElementById('image-upload-btn');
+        const imageUpload = document.getElementById('image-upload');
+        const imagePreviewContainer = document.getElementById('image-preview-container');
+        const imagePreview = document.getElementById('image-preview');
+        const removeImageBtn = document.getElementById('remove-image-btn');
+        
+        // Xử lý lỗi kết nối Socket.IO
+        socket.on('connect_error', (error) => {
+          console.error('Connection error:', error);
+          alert('Không thể kết nối đến server chat: ' + error.message);
+        });
+        
+        // Lấy lịch sử chat
+        async function fetchChatHistory() {
+          try {
+            chatMessages.innerHTML = `
+              <div class="text-center p-4">
+                <div class="spinner-border text-primary" role="status">
+                  <span class="visually-hidden">Đang tải...</span>
+                </div>
+              </div>
+            `;
+            
+            const response = await fetch(`/chat/history/${userId}`);
+            const data = await response.json();
+            
+            if (data.success) {
+              renderMessages(data.data);
+            } else {
+              console.error('Error fetching chat history:', data.message);
+              chatMessages.innerHTML = `
+                <div class="text-center p-4">
+                  <i class="fas fa-exclamation-circle text-danger" style="font-size: 2rem;"></i>
+                  <p class="mt-2 text-danger">Không thể tải lịch sử chat: ${data.message}</p>
+                </div>
+              `;
+            }
+          } catch (error) {
+            console.error('Error fetching chat history:', error);
+            chatMessages.innerHTML = `
+              <div class="text-center p-4">
+                <i class="fas fa-exclamation-circle text-danger" style="font-size: 2rem;"></i>
+                <p class="mt-2 text-danger">Không thể tải lịch sử chat</p>
+              </div>
+            `;
+          }
+        }
+        
+        // Hiển thị tin nhắn
+        function renderMessages(messages) {
+          chatMessages.innerHTML = '';
+          
+          if (messages.length === 0) {
+            chatMessages.innerHTML = `
+              <div class="text-center p-4">
+                <i class="far fa-comment-dots text-muted" style="font-size: 2rem;"></i>
+                <p class="mt-2 text-muted">Chưa có tin nhắn nào</p>
+              </div>
+            `;
+            return;
+          }
+          
+          // Tạo container cho tin nhắn
+          const messagesContainer = document.createElement('div');
+          messagesContainer.className = 'messages-container p-3';
+          
+          messages.forEach(message => {
+            const isUser = message.senderType === 'user';
+            const isImage = message.messageType === 'image';
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${isUser ? 'message-sent' : 'message-received'} mb-3`;
+            
+            let messageContent = '';
+            if (isImage) {
+              messageContent = `<img src="${message.message}" class="img-fluid rounded" style="max-width: 100%; max-height: 300px;" alt="Hình ảnh" onclick="window.open(this.src)">`;
+            } else {
+              messageContent = `<div>${message.message}</div>`;
+            }
+            
+            messageDiv.innerHTML = `
+              <div class="d-flex ${isUser ? 'justify-content-end' : 'justify-content-start'}">
+                <div class="message-content p-3 rounded ${isUser ? 'bg-primary text-white' : 'bg-white shadow-sm border'}" style="max-width: ${isImage ? '300px' : '75%'};">
+                  ${messageContent}
+                  <small class="message-time d-block mt-1 ${isUser ? 'text-white-50' : 'text-muted'}">${formatTime(new Date(message.createdAt))}</small>
+                </div>
+              </div>
+            `;
+            
+            messagesContainer.appendChild(messageDiv);
+          });
+          
+          chatMessages.appendChild(messagesContainer);
+          
+          // Cuộn xuống cuối cùng
+          chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+        
+        // Định dạng thời gian
+        function formatTime(date) {
+          const now = new Date();
+          const diff = now - date;
+          
+          // Nếu tin nhắn được gửi trong ngày hôm nay, hiển thị giờ
+          if (diff < 24 * 60 * 60 * 1000 && date.getDate() === now.getDate()) {
+            return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+          }
+          
+          // Nếu tin nhắn được gửi trong tuần này, hiển thị thứ
+          if (diff < 7 * 24 * 60 * 60 * 1000) {
+            const days = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
+            return `${days[date.getDay()]} ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+          }
+          
+          // Nếu tin nhắn được gửi trước đó, hiển thị ngày tháng năm
+          return date.toLocaleDateString();
+        }
+        
+        // Xử lý sự kiện gửi tin nhắn
+        sendMessageBtn.addEventListener('click', sendMessage);
+        
+        messageInput.addEventListener('keypress', function(e) {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            sendMessage();
+          }
+        });
+        
+        function sendMessage() {
+          // Nếu có ảnh để gửi
+          if (currentImageData) {
+            // Emit sự kiện gửi tin nhắn hình ảnh
+            socket.emit('sendMessage', {
+              senderId: userId,
+              receiverId: 'admin',
+              message: currentImageData,
+              senderType: 'user',
+              messageType: 'image'
+            });
+            
+            // Reset ảnh
+            resetImageUpload();
+            return;
+          }
+          
+          const message = messageInput.value.trim();
+          
+          if (!message) return;
+          
+          // Emit sự kiện gửi tin nhắn
+          socket.emit('sendMessage', {
+            senderId: userId,
+            receiverId: 'admin',
+            message: message,
+            senderType: 'user',
+            messageType: 'text'
+          });
+          
+          // Xóa input
+          messageInput.value = '';
+        }
+        
+        // Xử lý sự kiện nhận tin nhắn mới
+        socket.on('newMessage', (data) => {
+          const { message } = data;
+          
+          // Thêm tin nhắn mới vào khung chat
+          appendMessage(message);
+        });
+        
+        // Xử lý sự kiện tin nhắn đã gửi
+        socket.on('messageSent', (data) => {
+          const { message } = data;
+          
+          // Thêm tin nhắn mới vào khung chat
+          appendMessage(message);
+        });
+        
+        // Thêm tin nhắn mới vào khung chat
+        function appendMessage(message) {
+          // Nếu không có tin nhắn nào, xóa thông báo "Chưa có tin nhắn nào"
+          if (chatMessages.querySelector('.text-center')) {
+            chatMessages.innerHTML = '';
+          }
+          
+          // Tìm hoặc tạo container tin nhắn
+          let messagesContainer = chatMessages.querySelector('.messages-container');
+          if (!messagesContainer) {
+            messagesContainer = document.createElement('div');
+            messagesContainer.className = 'messages-container p-3';
+            chatMessages.appendChild(messagesContainer);
+          }
+          
+          const isUser = message.senderType === 'user';
+          const isImage = message.messageType === 'image';
+          const messageDiv = document.createElement('div');
+          messageDiv.className = `message ${isUser ? 'message-sent' : 'message-received'} mb-3`;
+          
+          let messageContent = '';
+          if (isImage) {
+            messageContent = `<img src="${message.message}" class="img-fluid rounded" style="max-width: 100%; max-height: 300px;" alt="Hình ảnh" onclick="window.open(this.src)">`;
+          } else {
+            messageContent = `<div>${message.message}</div>`;
+          }
+          
+          messageDiv.innerHTML = `
+            <div class="d-flex ${isUser ? 'justify-content-end' : 'justify-content-start'}">
+              <div class="message-content p-3 rounded ${isUser ? 'bg-primary text-white' : 'bg-white shadow-sm border'}" style="max-width: ${isImage ? '300px' : '75%'};">
+                ${messageContent}
+                <small class="message-time d-block mt-1 ${isUser ? 'text-white-50' : 'text-muted'}">${formatTime(new Date(message.createdAt))}</small>
+              </div>
+            </div>
+          `;
+          
+          messagesContainer.appendChild(messageDiv);
+          
+          // Thêm hiệu ứng khi tin nhắn mới được thêm vào
+          messageDiv.classList.add('new-message-animation');
+          
+          // Cuộn xuống cuối cùng
+          chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+        
+        // Xử lý sự kiện Upload ảnh
+        imageUploadBtn.addEventListener('click', function() {
+          imageUpload.click();
+        });
+        
+        imageUpload.addEventListener('change', function(e) {
+          const file = e.target.files[0];
+          if (!file) return;
+          
+          if (!file.type.match('image.*')) {
+            alert('Vui lòng chọn file hình ảnh');
+            return;
+          }
+          
+          if (file.size > 5 * 1024 * 1024) { // 5MB
+            alert('Kích thước ảnh không được vượt quá 5MB');
+            return;
+          }
+          
+          const reader = new FileReader();
+          reader.onload = function(e) {
+            currentImageData = e.target.result;
+            imagePreview.src = currentImageData;
+            imagePreviewContainer.style.display = 'block';
+            messageInput.placeholder = "Ấn gửi để gửi ảnh...";
+            messageInput.disabled = true;
+          };
+          reader.readAsDataURL(file);
+        });
+        
+        // Xử lý sự kiện xóa ảnh
+        removeImageBtn.addEventListener('click', function() {
+          resetImageUpload();
+        });
+        
+        // Reset form upload ảnh
+        function resetImageUpload() {
+          currentImageData = null;
+          imageUpload.value = '';
+          imagePreviewContainer.style.display = 'none';
+          messageInput.placeholder = "Nhập tin nhắn...";
+          messageInput.disabled = false;
+        }
+        
+        // Lấy lịch sử chat khi trang tải
+        fetchChatHistory();
+        
+        // Xử lý sự kiện tin nhắn đã đọc
+        socket.on('messagesRead', () => {
+          // Cập nhật UI để hiển thị rằng tin nhắn đã được đọc
+          const messages = document.querySelectorAll('.message-sent .message-time');
+          messages.forEach(m => {
+            if (!m.textContent.includes('(Đã đọc)')) {
+              m.textContent += ' (Đã đọc)';
+            }
+          });
+        });
+      });
+    </script>
+    
+    <style>
+      .chat-body {
+        background-color: #f8f9fa;
+      }
+      .message-sent .message-content {
+        border-radius: 18px 0 18px 18px !important;
+      }
+      .message-received .message-content {
+        border-radius: 0 18px 18px 18px !important;
+      }
+      .message-time {
+        font-size: 0.7rem;
+        text-align: right;
+      }
+      
+      /* Hiệu ứng cho tin nhắn mới */
+      @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+      .new-message-animation {
+        animation: fadeIn 0.3s ease-out;
+      }
+      
+      /* Style for image preview */
+      .image-preview-wrapper {
+        border-radius: 8px;
+        overflow: hidden;
+      }
+      #remove-image-btn {
+        border-radius: 50%;
+        width: 24px;
+        height: 24px;
+        padding: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 10px;
+      }
+    </style>
+  {{/content}}
+{{/extend}} 
