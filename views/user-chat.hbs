@@ -4,8 +4,14 @@
       <div class="row justify-content-center">
         <div class="col-md-8">
           <div class="card border-0 shadow-sm">
-            <div class="card-header bg-primary text-white">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
               <h5 class="card-title mb-0"><i class="fas fa-headset me-2"></i>Chat với hỗ trợ viên</h5>
+              <div class="d-flex align-items-center">
+                <input type="text" class="form-control form-control-sm bg-light" id="user-name-input" placeholder="Nhập tên của bạn" style="max-width: 180px;">
+                <button class="btn btn-light btn-sm ms-2" id="save-name-btn">
+                  <i class="fas fa-check"></i>
+                </button>
+              </div>
             </div>
             <div class="card-body chat-body" id="chat-messages" style="height: 400px; overflow-y: auto; background-color: #f8f9fa;">
               <!-- Tin nhắn sẽ được hiển thị ở đây -->
@@ -56,6 +62,9 @@
         const userId = localStorage.getItem('userId') || getQueryParam('userId') || generateUserId();
         localStorage.setItem('userId', userId);
         
+        // Lấy hoặc thiết lập tên người dùng
+        let userName = localStorage.getItem('userName') || '';
+        
         // Lưu userID vào local storage
         function generateUserId() {
           return 'user_' + Math.random().toString(36).substring(2, 10);
@@ -83,6 +92,27 @@
         const imagePreviewContainer = document.getElementById('image-preview-container');
         const imagePreview = document.getElementById('image-preview');
         const removeImageBtn = document.getElementById('remove-image-btn');
+        const userNameInput = document.getElementById('user-name-input');
+        const saveNameBtn = document.getElementById('save-name-btn');
+        
+        // Điền tên người dùng vào input nếu đã có
+        if (userName) {
+          userNameInput.value = userName;
+        }
+        
+        // Lưu tên người dùng
+        saveNameBtn.addEventListener('click', function() {
+          userName = userNameInput.value.trim();
+          localStorage.setItem('userName', userName);
+          alert('Đã lưu tên của bạn!');
+        });
+        
+        userNameInput.addEventListener('keypress', function(e) {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            saveNameBtn.click();
+          }
+        });
         
         // Xử lý lỗi kết nối Socket.IO
         socket.on('connect_error', (error) => {
@@ -157,9 +187,17 @@
               messageContent = `<div>${message.message}</div>`;
             }
             
+            let displayName = '';
+            if (isUser) {
+              displayName = message.userName ? message.userName : 'Bạn';
+            } else {
+              displayName = 'Hỗ trợ viên';
+            }
+            
             messageDiv.innerHTML = `
               <div class="d-flex ${isUser ? 'justify-content-end' : 'justify-content-start'}">
                 <div class="message-content p-3 rounded ${isUser ? 'bg-primary text-white' : 'bg-white shadow-sm border'}" style="max-width: ${isImage ? '300px' : '75%'};">
+                  <div class="message-sender mb-1 small fw-bold">${displayName}</div>
                   ${messageContent}
                   <small class="message-time d-block mt-1 ${isUser ? 'text-white-50' : 'text-muted'}">${formatTime(new Date(message.createdAt))}</small>
                 </div>
@@ -214,7 +252,8 @@
               receiverId: 'admin',
               message: currentImageData,
               senderType: 'user',
-              messageType: 'image'
+              messageType: 'image',
+              userName: userName
             });
             
             // Reset ảnh
@@ -232,7 +271,8 @@
             receiverId: 'admin',
             message: message,
             senderType: 'user',
-            messageType: 'text'
+            messageType: 'text',
+            userName: userName
           });
           
           // Xóa input
@@ -282,9 +322,17 @@
             messageContent = `<div>${message.message}</div>`;
           }
           
+          let displayName = '';
+          if (isUser) {
+            displayName = message.userName ? message.userName : 'Bạn';
+          } else {
+            displayName = 'Hỗ trợ viên';
+          }
+          
           messageDiv.innerHTML = `
             <div class="d-flex ${isUser ? 'justify-content-end' : 'justify-content-start'}">
               <div class="message-content p-3 rounded ${isUser ? 'bg-primary text-white' : 'bg-white shadow-sm border'}" style="max-width: ${isImage ? '300px' : '75%'};">
+                <div class="message-sender mb-1 small fw-bold">${displayName}</div>
                 ${messageContent}
                 <small class="message-time d-block mt-1 ${isUser ? 'text-white-50' : 'text-muted'}">${formatTime(new Date(message.createdAt))}</small>
               </div>
@@ -374,6 +422,9 @@
         font-size: 0.7rem;
         text-align: right;
       }
+      .message-sender {
+        opacity: 0.9;
+      }
       
       /* Hiệu ứng cho tin nhắn mới */
       @keyframes fadeIn {
@@ -398,6 +449,18 @@
         align-items: center;
         justify-content: center;
         font-size: 10px;
+      }
+      #user-name-input {
+        border-radius: 20px;
+      }
+      #save-name-btn {
+        border-radius: 50%;
+        width: 28px;
+        height: 28px;
+        padding: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
       }
     </style>
   {{/content}}

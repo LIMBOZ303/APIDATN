@@ -6,6 +6,11 @@ const chatMessageSchema = new mongoose.Schema({
         type: String, 
         required: true 
     },
+    // Tên người dùng
+    userName: {
+        type: String,
+        default: ''
+    },
     // Định danh người nhận (user hoặc admin)
     receiverId: { 
         type: String, 

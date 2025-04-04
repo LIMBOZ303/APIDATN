@@ -48,10 +48,14 @@ exports.getAllChatUsers = async (req, res) => {
         
         userMessages.forEach(message => {
             const userId = message.senderId === 'admin' ? message.receiverId : message.senderId;
+            const userName = message.senderId === 'admin' ? 
+                             (message.userName || userId) : // Nếu admin gửi, lấy username của người nhận
+                             (message.userName || userId); // Nếu user gửi, lấy username của người gửi
             
             if (!usersMap.has(userId)) {
                 usersMap.set(userId, {
                     userId: userId,
+                    userName: userName,
                     lastMessage: message.message,
                     lastMessageTime: message.createdAt,
                     unreadCount: 0
@@ -104,7 +108,7 @@ exports.getAllChatUsers = async (req, res) => {
 // Lưu tin nhắn mới
 exports.saveMessage = async (req, res) => {
     try {
-        const { senderId, receiverId, message, senderType, messageType = 'text' } = req.body;
+        const { senderId, receiverId, message, senderType, messageType = 'text', userName = '' } = req.body;
         
         if (!senderId || !receiverId || !message || !senderType) {
             return res.status(400).json({
@@ -132,6 +136,7 @@ exports.saveMessage = async (req, res) => {
             message,
             senderType,
             messageType,
+            userName,
             read: false
         });
         
