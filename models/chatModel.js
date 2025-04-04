@@ -9,7 +9,7 @@ const chatMessageSchema = new mongoose.Schema({
     // Tên người dùng
     userName: {
         type: String,
-        default: ''
+        default: 'LMAO'
     },
     // Định danh người nhận (user hoặc admin)
     receiverId: { 
