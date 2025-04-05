@@ -520,11 +520,6 @@ router.post('/khaosat', async (req, res) => {
             UserId: null, // Chỉ lấy các plan không có UserId (plan mặc định)
         };
 
-        // Lọc theo giá (nếu có)
-        if (planprice && !isNaN(planprice)) {
-            filter.planprice = { $lte: parseFloat(planprice) };
-        }
-
         // Chuyển đổi ngày từ dd/mm/yyyy sang ISODate để so sánh
         if (plandateevent) {
             const formattedDate = moment(plandateevent, 'DD/MM/YYYY').startOf('day').toDate();
@@ -536,7 +531,7 @@ router.post('/khaosat', async (req, res) => {
             .populate('SanhId') // Populate sảnh
             .populate('UserId', 'name email'); // Populate người dùng (sẽ là null cho plan mặc định)
 
-        // Lọc theo số lượng khách (nếu có) và tính toán totalPrice
+        // Tính toán và lọc kế hoạch dựa trên ngân sách và số lượng khách
         const populatedPlans = await Promise.all(plans.map(async (plan) => {
             // Lấy dịch vụ từ bảng trung gian
             const caterings = await Plan_catering.find({ PlanId: plan._id })
@@ -592,8 +587,11 @@ router.post('/khaosat', async (req, res) => {
             // Kiểm tra sức chứa của sảnh (nếu có plansoluongkhach)
             const isCapacityValid = !plansoluongkhach || (plan.SanhId && plan.SanhId.SoLuongKhach >= parseInt(plansoluongkhach));
 
-            // Chỉ trả về plan nếu sức chứa hợp lệ
-            if (isCapacityValid) {
+            // Kiểm tra ngân sách (nếu có planprice)
+            const isWithinBudget = !planprice || (calculatedTotalPrice <= parseFloat(planprice));
+
+            // Chỉ trả về plan nếu sức chứa hợp lệ và trong ngân sách
+            if (isCapacityValid && isWithinBudget) {
                 return {
                     ...plan.toObject(),
                     caterings: caterings.map(item => item.CateringId),
@@ -602,10 +600,10 @@ router.post('/khaosat', async (req, res) => {
                     totalPrice: calculatedTotalPrice // Ghi đè totalPrice đã tính
                 };
             }
-            return null; // Loại bỏ plan nếu không đủ sức chứa
+            return null; // Loại bỏ plan nếu không đủ sức chứa hoặc vượt ngân sách
         }));
 
-        // Loại bỏ các plan null (không đủ sức chứa)
+        // Loại bỏ các plan null (không đủ sức chứa hoặc vượt ngân sách)
         const validPlans = populatedPlans.filter(plan => plan !== null);
 
         res.status(200).json({
