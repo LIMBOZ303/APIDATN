@@ -203,18 +203,18 @@ router.post('/transactions', async (req, res) => {
       return res.status(404).json({ status: false, message: 'Không tìm thấy kế hoạch' });
     }
 
-    // Tạo transaction mới với status: 'pending'
+    // Tạo transaction mới với status: 'Đang chờ'
     const transaction = new Transaction({
       planId,
       userId,
       depositAmount,
       orderCode, // Lưu orderCode từ PayOS nếu có
-      status: 'pending', // Đặt status là 'pending' vì đã đặt cọc
+      status: 'Đang chờ', // Đặt status là 'Đang chờ' vì đã đặt cọc
     });
     await transaction.save();
 
-    // Cập nhật status của Plan thành 'pending'
-    plan.status = 'pending';
+    // Cập nhật status của Plan thành 'Đang chờ'
+    plan.status = 'Đang chờ';
     await plan.save();
 
     res.status(201).json({
@@ -296,15 +296,15 @@ router.patch('/transactions/:id/confirm', async (req, res) => {
     }
 
     // Cập nhật status của Transaction
-    transaction.status = 'active';
+    transaction.status = 'Đã kích hoạt';
     await transaction.save();
 
     // Đồng bộ status của Plan
     const plan = await Plan.findById(transaction.planId);
     if (plan) {
-      plan.status = 'active';
+      plan.status = 'Đã kích hoạt';
       await plan.save();
-      console.log(`Đã cập nhật status của Plan ${plan._id} thành active`);
+      console.log(`Đã cập nhật status của Plan ${plan._id} thành Đã kích hoạt`);
     } else {
       console.warn(`Không tìm thấy Plan với ID ${transaction.planId}`);
     }
