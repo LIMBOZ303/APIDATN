@@ -520,30 +520,25 @@ router.post('/khaosat', async (req, res) => {
             UserId: null, // Chỉ lấy các plan không có UserId (plan mặc định)
         };
 
-        // Lọc theo giá
+        // Lọc theo giá (nếu có)
         if (planprice && !isNaN(planprice)) {
-            filter.totalPrice = { $lte: parseFloat(planprice) };
+            filter.planprice = { $lte: parseFloat(planprice) };
         }
 
         // Chuyển đổi ngày từ dd/mm/yyyy sang ISODate để so sánh
         if (plandateevent) {
             const formattedDate = moment(plandateevent, 'DD/MM/YYYY').startOf('day').toDate();
-            filter.PlanDateEvent = { $ne: formattedDate }; // Lọc ra các ngày chưa có người đặt
+            filter.plandateevent = { $ne: formattedDate }; // Lọc ra các ngày chưa có người đặt
         }
 
+        // Lấy danh sách kế hoạch mặc định
         let plans = await Plan.find(filter)
             .populate('SanhId') // Populate sảnh
             .populate('UserId', 'name email'); // Populate người dùng (sẽ là null cho plan mặc định)
 
-        // Lọc theo số lượng khách
-        if (plansoluongkhach && !isNaN(plansoluongkhach)) {
-            plans = plans.filter(plan =>
-                plan.SanhId && plan.SanhId.SoLuongKhach >= parseInt(plansoluongkhach)
-            );
-        }
-
-        // Lấy dịch vụ từ bảng trung gian
+        // Lọc theo số lượng khách (nếu có) và tính toán totalPrice
         const populatedPlans = await Promise.all(plans.map(async (plan) => {
+            // Lấy dịch vụ từ bảng trung gian
             const caterings = await Plan_catering.find({ PlanId: plan._id })
                 .populate({
                     path: 'CateringId',
@@ -571,18 +566,52 @@ router.post('/khaosat', async (req, res) => {
                     }
                 });
 
-            return {
-                ...plan.toObject(),
-                caterings: caterings.map(item => item.CateringId),
-                decorates: decorates.map(item => item.DecorateId),
-                presents: presents.map(item => item.PresentId)
-            };
+            // Tính số bàn dựa trên plansoluongkhach (nếu có)
+            const soLuongBan = plansoluongkhach ? Math.ceil(parseInt(plansoluongkhach) / 10) : 0;
+
+            // Tính tổng giá catering
+            let totalCateringPrice = 0;
+            if (soLuongBan > 0) {
+                totalCateringPrice = caterings.reduce((sum, item) => {
+                    const cateringPrice = item.CateringId?.price || 0;
+                    return sum + (cateringPrice * soLuongBan);
+                }, 0);
+            }
+
+            // Tính tổng giá decorate
+            const totalDecoratePrice = decorates.reduce((sum, item) => {
+                return sum + (item.DecorateId?.price || 0);
+            }, 0);
+
+            // Tính tổng giá sảnh
+            const sanhPrice = plan.SanhId?.price || 0;
+
+            // Tính totalPrice dựa trên số lượng khách
+            const calculatedTotalPrice = sanhPrice + totalCateringPrice + totalDecoratePrice;
+
+            // Kiểm tra sức chứa của sảnh (nếu có plansoluongkhach)
+            const isCapacityValid = !plansoluongkhach || (plan.SanhId && plan.SanhId.SoLuongKhach >= parseInt(plansoluongkhach));
+
+            // Chỉ trả về plan nếu sức chứa hợp lệ
+            if (isCapacityValid) {
+                return {
+                    ...plan.toObject(),
+                    caterings: caterings.map(item => item.CateringId),
+                    decorates: decorates.map(item => item.DecorateId),
+                    presents: presents.map(item => item.PresentId),
+                    totalPrice: calculatedTotalPrice // Ghi đè totalPrice đã tính
+                };
+            }
+            return null; // Loại bỏ plan nếu không đủ sức chứa
         }));
+
+        // Loại bỏ các plan null (không đủ sức chứa)
+        const validPlans = populatedPlans.filter(plan => plan !== null);
 
         res.status(200).json({
             status: true,
             message: "Lấy danh sách kế hoạch mặc định thành công",
-            data: populatedPlans
+            data: validPlans
         });
 
     } catch (error) {
