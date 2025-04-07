@@ -19,6 +19,85 @@ const catering = require('../models/cateringModel')
 const present = require('../models/presentModel')
 
 
+
+// Hàm chung để populate và tính toán plans
+const populatePlans = async (plans) => {
+    return await Promise.all(plans.map(async (plan) => {
+        const caterings = await Plan_catering.find({ PlanId: plan._id })
+            .populate({
+                path: 'CateringId',
+                select: 'name price imageUrl', // Lấy name, price, imageUrl
+                populate: {
+                    path: 'cate_cateringId',
+                    select: 'name'
+                }
+            });
+        const decorates = await Plan_decorate.find({ PlanId: plan._id })
+            .populate({
+                path: 'DecorateId',
+                select: 'name price imageUrl', // Lấy name, price, imageUrl
+                populate: {
+                    path: 'Cate_decorateId',
+                    select: 'name'
+                }
+            });
+        const presents = await Plan_present.find({ PlanId: plan._id })
+            .populate({
+                path: 'PresentId',
+                select: 'name price imageUrl', // Lấy name, price, imageUrl
+                populate: {
+                    path: 'Cate_presentId',
+                    select: 'name'
+                }
+            });
+
+        // Nếu totalPrice chưa có hoặc bị lỗi, tự động cập nhật
+        if (!plan.totalPrice) {
+            await plan.calculateTotalPrice();
+            await plan.save();
+        }
+
+        return {
+            ...plan.toObject(),
+            totalPrice: plan.totalPrice,
+            caterings: caterings.map(item => item.CateringId), // Trả về đầy đủ thông tin CateringId
+            decorates: decorates.map(item => item.DecorateId), // Trả về đầy đủ thông tin DecorateId
+            presents: presents.map(item => item.PresentId),   // Trả về đầy đủ thông tin PresentId
+        };
+    }));
+};
+
+
+// 2. Lấy plans không có UserId
+router.get('/no-user', async (req, res) => {
+    try {
+        const plans = await Plan.find({ UserId: { $exists: false } })
+            .populate('SanhId', 'name price imageUrl'); // Lấy name, price, imageUrl của Sanh
+
+        const populatedPlans = await populatePlans(plans);
+        res.status(200).json({ status: true, message: "Lấy danh sách kế hoạch không có user thành công", data: populatedPlans });
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({ status: false, message: "Thất bại khi lấy danh sách kế hoạch không có user" });
+    }
+});
+
+// 3. Lấy plans có UserId
+router.get('/with-user', async (req, res) => {
+    try {
+        const plans = await Plan.find({ UserId: { $exists: true } })
+            .populate('SanhId', 'name price imageUrl') // Lấy name, price, imageUrl của Sanh
+            .populate('UserId', 'name email');
+
+        const populatedPlans = await populatePlans(plans);
+        res.status(200).json({ status: true, message: "Lấy danh sách kế hoạch có user thành công", data: populatedPlans });
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({ status: false, message: "Thất bại khi lấy danh sách kế hoạch có user" });
+    }
+});
+
+
 router.post('/add', async (req, res) => {
     try {
         const {
