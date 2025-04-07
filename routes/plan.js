@@ -26,7 +26,7 @@ const populatePlans = async (plans) => {
         const caterings = await Plan_catering.find({ PlanId: plan._id })
             .populate({
                 path: 'CateringId',
-                select: 'name price imageUrl', // Lấy name, price, imageUrl
+                select: 'name price imageUrl',
                 populate: {
                     path: 'cate_cateringId',
                     select: 'name'
@@ -35,7 +35,7 @@ const populatePlans = async (plans) => {
         const decorates = await Plan_decorate.find({ PlanId: plan._id })
             .populate({
                 path: 'DecorateId',
-                select: 'name price imageUrl', // Lấy name, price, imageUrl
+                select: 'name price imageUrl',
                 populate: {
                     path: 'Cate_decorateId',
                     select: 'name'
@@ -44,7 +44,7 @@ const populatePlans = async (plans) => {
         const presents = await Plan_present.find({ PlanId: plan._id })
             .populate({
                 path: 'PresentId',
-                select: 'name price imageUrl', // Lấy name, price, imageUrl
+                select: 'name price imageUrl',
                 populate: {
                     path: 'Cate_presentId',
                     select: 'name'
@@ -60,9 +60,12 @@ const populatePlans = async (plans) => {
         return {
             ...plan.toObject(),
             totalPrice: plan.totalPrice,
-            caterings: caterings.map(item => item.CateringId), // Trả về đầy đủ thông tin CateringId
-            decorates: decorates.map(item => item.DecorateId), // Trả về đầy đủ thông tin DecorateId
-            presents: presents.map(item => item.PresentId),   // Trả về đầy đủ thông tin PresentId
+            caterings: caterings.map(item => item.CateringId),
+            decorates: decorates.map(item => item.DecorateId),
+            presents: presents.map(item => ({
+                ...item.PresentId.toObject(), // Lấy toàn bộ thông tin của PresentId
+                quantity: item.quantity // Thêm quantity từ Plan_present
+            })),
         };
     }));
 };
