@@ -17,8 +17,8 @@ const TransactionSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['Chưa kích hoạt', 'Đang chờ', 'Đã kích hoạt'],
-    default: 'Chưa kích hoạt',
+    enum: ['Chưa đặt cọc', 'Đang chờ', 'Đã đặt cọc'],
+    default: 'Chưa đặt cọc',
   },
   createdAt: {
     type: Date,

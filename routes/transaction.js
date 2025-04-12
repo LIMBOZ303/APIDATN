@@ -70,11 +70,11 @@ router.get('/transaction-stats', async (req, res) => {
 // API endpoint: Lấy thống kê theo trạng thái cụ thể
 router.get('/transaction-stats/by-status/:status', async (req, res) => {
   const { status } = req.params;
-  const validStatuses = ['Chưa kích hoạt', 'Đang chờ', 'Đã kích hoạt'];
+  const validStatuses = ['Chưa đặt cọc', 'Đang chờ', 'Đã đặt cọc'];
   if (!validStatuses.includes(status)) {
     return res.status(400).json({
       success: false,
-      message: 'Invalid status. Must be one of: Chưa kích hoạt, Đang chờ, Đã kích hoạt',
+      message: 'Invalid status. Must be one of: Chưa đặt cọc, Đang chờ, Đã đặt cọc',
     });
   }
 
