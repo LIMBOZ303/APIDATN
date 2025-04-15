@@ -54,61 +54,57 @@ router.delete('/delete/:userId', async (req, res) => {
         const { type, itemId } = req.query;
 
         const models = {
-            Catering: { model: require('../models/ListOrder/Catering_order'), field: 'Catering_orders' },
-            Decorate: { model: require('../models/ListOrder/Decorate_order'), field: 'Decorate_orders' },
-            Sanh: { model: require('../models/ListOrder/Lobby_order'), field: 'Lobby_orders' },
-            Present: { model: require('../models/ListOrder/Present_order'), field: 'Present_orders' },
+            Catering: { model: require('../models/ListOrder/Catering_order'), field: 'Catering_orders', idField: 'CateringId' },
+            Decorate: { model: require('../models/ListOrder/Decorate_order'), field: 'Decorate_orders', idField: 'DecorateId' },
+            Sanh: { model: require('../models/ListOrder/Lobby_order'), field: 'Lobby_orders', idField: 'SanhId' },
+            Present: { model: require('../models/ListOrder/Present_order'), field: 'Present_orders', idField: 'PresentId' },
         };
 
         if (!models[type]) {
-            return res.status(400).json({ status: false, message: "Loại không hợp lệ" });
+            return res.status(400).json({ status: false, message: 'Loại không hợp lệ' });
         }
 
-        const { model: orderModel, field: orderField } = models[type];
+        const { model: orderModel, field: orderField, idField } = models[type];
 
-        const orderIdCondition = new ObjectId(itemId); // itemId là _id của present_order
         const userIdCondition = new ObjectId(userId);
 
-        console.log(`Tìm xóa: type=${type}, _id=${itemId}, UserId=${userId}`);
-
-        // Xóa bản ghi dựa trên _id và UserId
+        // Tìm và xóa bản ghi dựa trên PresentId (hoặc tương ứng) và UserId
         const order = await orderModel.findOneAndDelete({
-            _id: orderIdCondition,
+            [idField]: new ObjectId(itemId),
             UserId: userIdCondition,
         });
 
         if (!order) {
-            console.log(`Không tìm thấy bản ghi với _id=${itemId} và UserId=${userId}`);
-            // Làm mới danh sách ngay cả khi không tìm thấy
+            console.log(`Không tìm thấy bản ghi với ${idField}=${itemId} và UserId=${userId}`);
         }
 
-        // Cập nhật User
+        // Cập nhật User để xóa tham chiếu
         await User.findByIdAndUpdate(userIdCondition, { $pull: { [orderField]: order?._id } });
 
         // Lấy danh sách yêu thích mới
         const user = await User.findById(userIdCondition).populate(orderField);
         if (!user) {
-            return res.status(404).json({ status: false, message: "Không tìm thấy người dùng" });
+            return res.status(404).json({ status: false, message: 'Không tìm thấy người dùng' });
         }
 
         const favorites = user[orderField] || [];
-        const formattedFavorites = favorites.map(order => ({
-            type: type,
-            itemId: order._id.toString(),
+        const formattedFavorites = favorites.map((order) => ({
+            type,
+            itemId: order[idField]?.toString(),
             _id: order._id.toString(),
-            image: order[`${type}Id`]?.image || 'https://via.placeholder.com/80',
-            name: order[`${type}Id`]?.name || 'Không có tên',
-            price: order[`${type}Id`]?.price || 0,
+            image: order[idField]?.image || 'https://via.placeholder.com/80',
+            name: order[idField]?.name || 'Không có tên',
+            price: order[idField]?.price || 0,
         }));
 
         res.status(200).json({
             status: true,
-            message: order ? "Đã xóa khỏi danh sách yêu thích" : "Mục không tồn tại, trả về danh sách mới",
+            message: order ? 'Đã xóa khỏi danh sách yêu thích' : 'Mục không tồn tại, trả về danh sách mới',
             data: formattedFavorites,
         });
     } catch (error) {
-        console.error("Lỗi server khi xóa:", error.message);
-        res.status(500).json({ status: false, message: "Lỗi server", error: error.message });
+        console.error('Lỗi server khi xóa:', error.message);
+        res.status(500).json({ status: false, message: 'Lỗi server', error: error.message });
     }
 });
 
