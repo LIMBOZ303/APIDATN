@@ -296,15 +296,15 @@ router.patch('/transactions/:id/confirm', async (req, res) => {
     }
 
     // Cập nhật status của Transaction
-    transaction.status = 'Đã kích hoạt';
+    transaction.status = 'Đã đặt cọc';
     await transaction.save();
 
     // Đồng bộ status của Plan
     const plan = await Plan.findById(transaction.planId);
     if (plan) {
-      plan.status = 'Đã kích hoạt';
+      plan.status = 'Đã đặt cọc';
       await plan.save();
-      console.log(`Đã cập nhật status của Plan ${plan._id} thành Đã kích hoạt`);
+      console.log(`Đã cập nhật status của Plan ${plan._id} thành Đã đặt cọc`);
     } else {
       console.warn(`Không tìm thấy Plan với ID ${transaction.planId}`);
     }
