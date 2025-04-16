@@ -9,7 +9,7 @@ const planSchema = new mongoose.Schema({
     SanhId: { type: mongoose.Schema.Types.ObjectId, ref: 'Sanh', required: true },
     UserId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: false },
     totalPrice: { type: Number, required: false, default: 0 },
-    status: { type: String, enum: ['Đã đặt cọc', 'Đang chờ', 'Chưa đặt cọc'], default: 'Chưa đặt cọc' },
+    status: { type: String, enum: ['Đã đặt cọc', 'Đang chờ', 'Chưa đặt cọc', 'Đã hủy'], default: 'Chưa đặt cọc' },
     planprice: { type: Number, required: false },
     plansoluongkhach: { type: Number, required: false },
     plandateevent: { type: Date, required: false, index: true },
@@ -45,31 +45,25 @@ planSchema.methods.calculateTotalPrice = async function (plansoluongkhach = this
         return this.totalPrice;
     }
 
-    // Lấy thông tin từ các collection liên quan
     const sanh = await Sanh.findById(this.SanhId, 'price');
     const caterings = await Plan_catering.find({ PlanId: this._id }).populate('CateringId', 'price');
     const decorates = await Plan_decorate.find({ PlanId: this._id }).populate('DecorateId', 'price');
     const presents = await Plan_present.find({ PlanId: this._id }).populate('PresentId', 'price');
 
-    // Tính số bàn dựa trên plansoluongkhach
     const soLuongBan = plansoluongkhach ? Math.ceil(plansoluongkhach / 10) : 0;
 
-    // Tính tổng giá catering
     const totalCateringPrice = soLuongBan > 0
         ? caterings.reduce((sum, item) => sum + ((item.CateringId?.price || 0) * soLuongBan), 0)
         : 0;
 
-    // Tính tổng giá decorate
     const totalDecoratePrice = decorates.reduce((sum, item) => sum + (item.DecorateId?.price || 0), 0);
 
-    // Tính tổng giá presents (không phụ thuộc số lượng khách)
     const totalPresentPrice = presents.reduce((sum, item) => {
         const price = item.PresentId?.price || 0;
-        const quantity = item.quantity || 1; // Mặc định quantity là 1 nếu không có
+        const quantity = item.quantity || 1;
         return sum + (price * quantity);
     }, 0);
 
-    // Tính totalPrice
     this.totalPrice = (sanh?.price || 0) + totalCateringPrice + totalDecoratePrice + totalPresentPrice;
     return this.totalPrice;
 };

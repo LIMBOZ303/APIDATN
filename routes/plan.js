@@ -20,6 +20,40 @@ const present = require('../models/presentModel')
 
 
 
+// API endpoint: Hủy kế hoạch
+router.put('/cancel/:planId', async (req, res) => {
+    try {
+        const { planId } = req.params;
+
+        if (!planId.match(/^[0-9a-fA-F]{24}$/)) {
+            return res.status(400).json({ status: false, message: "PlanId không hợp lệ" });
+        }
+
+        const plan = await Plan.findById(planId);
+        if (!plan) {
+            return res.status(404).json({ status: false, message: "Không tìm thấy kế hoạch" });
+        }
+
+        if (plan.status === 'Đã hủy') {
+            return res.status(400).json({ status: false, message: "Kế hoạch đã được hủy trước đó" });
+        }
+
+        plan.status = 'Đã hủy';
+        await plan.save();
+
+        res.status(200).json({
+            status: true,
+            message: "Hủy kế hoạch thành công",
+            data: plan
+        });
+    } catch (error) {
+        console.error("Lỗi khi hủy kế hoạch:", error);
+        res.status(500).json({ status: false, message: "Lỗi khi hủy kế hoạch", error: error.message });
+    }
+});
+
+
+
 // Hàm chung để populate và tính toán plans
 const populatePlans = async (plans) => {
     return await Promise.all(plans.map(async (plan) => {

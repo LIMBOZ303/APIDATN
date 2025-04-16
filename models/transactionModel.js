@@ -2,13 +2,13 @@ const mongoose = require('mongoose');
 
 const TransactionSchema = new mongoose.Schema({
   planId: {
-    type: mongoose.Schema.Types.ObjectId, // Sửa thành ObjectId
-    ref: 'Plan', // Liên kết với model Plan
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Plan',
     required: true,
   },
   userId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'User', // Liên kết với model User
+    ref: 'User',
     required: true,
   },
   depositAmount: {
@@ -17,7 +17,7 @@ const TransactionSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['Chưa đặt cọc', 'Đang chờ', 'Đã đặt cọc'],
+    enum: ['Chưa đặt cọc', 'Đang chờ', 'Đã đặt cọc', 'Đã hủy'],
     default: 'Chưa đặt cọc',
   },
   createdAt: {
