@@ -2,23 +2,70 @@ const express = require('express');
 const router = express.Router();
 const moment = require('moment');
 const Plan = require('../models/planModel');
-const Lobby = require('../models/Sanh');
-const User = require('../models/userModel');
 const Plan_catering = require('../models/PlanWith/Plan-Catering')
 const Plan_decorate = require('../models/PlanWith/Plan-Decorate')
 const Plan_present = require('../models/PlanWith/Plan-Present')
-const Plan_lobby = require('../models/PlanWith/Plan-lobby')
+
 const catering_order = require('../models/ListOrder/Catering_order'); // Viết thường
 const decorate_order = require('../models/ListOrder/Decorate_order'); // Viết thường
 const present_order = require('../models/ListOrder/Present_order');   // Viết thường
 const Lobby_order = require('../models/ListOrder/Lobby_order');   // Viết thường
 
-const cate_catering = require('../models/Cate/cate_cateringModel')
-const decorate = require('../models/decorateModel')
-const catering = require('../models/cateringModel')
-const present = require('../models/presentModel')
+const Transaction = require('../models/transactionModel');
 
+// API endpoint: Hủy kế hoạch
+router.put('/cancel/:planId', async (req, res) => {
+    try {
+        const { planId } = req.params;
 
+        if (!planId.match(/^[0-9a-fA-F]{24}$/)) {
+            return res.status(400).json({ status: false, message: "PlanId không hợp lệ" });
+        }
+
+        // Tìm kế hoạch
+        const plan = await Plan.findById(planId);
+        if (!plan) {
+            return res.status(404).json({ status: false, message: "Không tìm thấy kế hoạch" });
+        }
+
+        // Kiểm tra trạng thái hiện tại của kế hoạch
+        if (plan.status === 'Đã hủy') {
+            return res.status(400).json({ status: false, message: "Kế hoạch đã được hủy trước đó" });
+        }
+
+        // Cập nhật trạng thái kế hoạch thành "Đã hủy"
+        plan.status = 'Đã hủy';
+        await plan.save();
+
+        // Tìm và cập nhật trạng thái giao dịch liên quan
+        const transactions = await Transaction.find({ planId });
+        if (transactions.length > 0) {
+            await Transaction.updateMany(
+                { planId },
+                { $set: { status: 'Đã hủy' } }
+            );
+        }
+
+        // Populate lại dữ liệu để trả về
+        const populatedPlan = await Plan.findById(planId)
+            .populate('SanhId', 'name price imageUrl')
+            .populate('UserId', 'name email');
+        const populatedData = await populatePlans([populatedPlan]);
+
+        return res.status(200).json({
+            status: true,
+            message: "Hủy kế hoạch và cập nhật giao dịch thành công",
+            data: populatedData[0]
+        });
+    } catch (error) {
+        console.error("Lỗi khi hủy kế hoạch:", error);
+        return res.status(500).json({
+            status: false,
+            message: "Lỗi khi hủy kế hoạch",
+            error: error.message
+        });
+    }
+});
 
 // Hàm chung để populate và tính toán plans
 const populatePlans = async (plans) => {
@@ -75,7 +122,7 @@ const populatePlans = async (plans) => {
 router.get('/no-user', async (req, res) => {
     try {
         const plans = await Plan.find({ UserId: { $exists: false } })
-            .populate('SanhId', 'name price imageUrl'); // Lấy name, price, imageUrl của Sanh
+            .populate('SanhId', 'name price imageUrl');
 
         const populatedPlans = await populatePlans(plans);
         res.status(200).json({ status: true, message: "Lấy danh sách kế hoạch không có user thành công", data: populatedPlans });
@@ -83,7 +130,7 @@ router.get('/no-user', async (req, res) => {
         console.log(error);
         res.status(500).json({ status: false, message: "Thất bại khi lấy danh sách kế hoạch không có user" });
     }
-});
+});;
 
 // 3. Lấy plans có UserId
 router.get('/with-user', async (req, res) => {

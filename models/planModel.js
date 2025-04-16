@@ -9,7 +9,7 @@ const planSchema = new mongoose.Schema({
     SanhId: { type: mongoose.Schema.Types.ObjectId, ref: 'Sanh', required: true },
     UserId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: false },
     totalPrice: { type: Number, required: false, default: 0 },
-    status: { type: String, enum: ['Đã đặt cọc', 'Đang chờ', 'Chưa đặt cọc'], default: 'Chưa đặt cọc' },
+    status: { type: String, enum: ['Đã đặt cọc', 'Đang chờ', 'Chưa đặt cọc','Đã hủy'], default: 'Chưa đặt cọc' },
     planprice: { type: Number, required: false },
     plansoluongkhach: { type: Number, required: false },
     plandateevent: { type: Date, required: false, index: true },
