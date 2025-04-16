@@ -18,39 +18,69 @@ const decorate = require('../models/decorateModel')
 const catering = require('../models/cateringModel')
 const present = require('../models/presentModel')
 
+const Transaction = require('../models/transactionModel');
+
 
 
 // API endpoint: Hủy kế hoạch
 router.put('/cancel/:planId', async (req, res) => {
+    const session = await mongoose.startSession();
+    session.startTransaction();
     try {
-        const { planId } = req.params;
-
-        if (!planId.match(/^[0-9a-fA-F]{24}$/)) {
-            return res.status(400).json({ status: false, message: "PlanId không hợp lệ" });
-        }
-
-        const plan = await Plan.findById(planId);
-        if (!plan) {
-            return res.status(404).json({ status: false, message: "Không tìm thấy kế hoạch" });
-        }
-
-        if (plan.status === 'Đã hủy') {
-            return res.status(400).json({ status: false, message: "Kế hoạch đã được hủy trước đó" });
-        }
-
-        plan.status = 'Đã hủy';
-        await plan.save();
-
-        res.status(200).json({
-            status: true,
-            message: "Hủy kế hoạch thành công",
-            data: plan
-        });
+      const { planId } = req.params;
+  
+      // Kiểm tra tính hợp lệ của planId
+      if (!planId.match(/^[0-9a-fA-F]{24}$/)) {
+        await session.abortTransaction();
+        session.endSession();
+        return res.status(400).json({ status: false, message: "PlanId không hợp lệ" });
+      }
+  
+      // Tìm kế hoạch
+      const plan = await Plan.findById(planId).session(session);
+      if (!plan) {
+        await session.abortTransaction();
+        session.endSession();
+        return res.status(404).json({ status: false, message: "Không tìm thấy kế hoạch" });
+      }
+  
+      // Kiểm tra trạng thái kế hoạch
+      if (plan.status === 'Đã hủy') {
+        await session.abortTransaction();
+        session.endSession();
+        return res.status(400).json({ status: false, message: "Kế hoạch đã được hủy trước đó" });
+      }
+  
+      // Cập nhật trạng thái kế hoạch
+      plan.status = 'Đã hủy';
+      await plan.save({ session });
+  
+      // Cập nhật trạng thái của tất cả giao dịch liên quan
+      const transactions = await Transaction.find({ planId }).session(session);
+      if (transactions.length > 0) {
+        await Transaction.updateMany(
+          { planId, status: { $ne: 'Đã hủy' } },
+          { $set: { status: 'Đã hủy' } },
+          { session }
+        );
+      }
+  
+      // Commit giao dịch
+      await session.commitTransaction();
+      session.endSession();
+  
+      res.status(200).json({
+        status: true,
+        message: "Hủy kế hoạch và các giao dịch liên quan thành công",
+        data: plan,
+      });
     } catch (error) {
-        console.error("Lỗi khi hủy kế hoạch:", error);
-        res.status(500).json({ status: false, message: "Lỗi khi hủy kế hoạch", error: error.message });
+      await session.abortTransaction();
+      session.endSession();
+      console.error("Lỗi khi hủy kế hoạch:", error);
+      res.status(500).json({ status: false, message: "Lỗi khi hủy kế hoạch", error: error.message });
     }
-});
+  });
 
 
 
