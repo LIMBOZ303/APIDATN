@@ -50,38 +50,6 @@ async function getTransactionStats() {
   }
 }
 
-
-// API endpoint: Hủy giao dịch
-router.put('/cancel/:transactionId', async (req, res) => {
-  try {
-    const { transactionId } = req.params;
-
-    if (!mongoose.Types.ObjectId.isValid(transactionId)) {
-      return res.status(400).json({ success: false, message: 'Invalid transactionId format' });
-    }
-
-    const transaction = await Transaction.findById(transactionId);
-    if (!transaction) {
-      return res.status(404).json({ success: false, message: 'Không tìm thấy giao dịch' });
-    }
-
-    if (transaction.status === 'Đã hủy') {
-      return res.status(400).json({ success: false, message: 'Giao dịch đã được hủy trước đó' });
-    }
-
-    transaction.status = 'Đã hủy';
-    await transaction.save();
-
-    res.status(200).json({
-      success: true,
-      message: 'Hủy giao dịch thành công',
-      data: transaction,
-    });
-  } catch (error) {
-    res.status(500).json({ success: false, message: 'Lỗi khi hủy giao dịch: ' + error.message });
-  }
-});
-
 // API endpoint: Lấy thống kê giao dịch
 router.get('/transaction-stats', async (req, res) => {
   try {
@@ -99,15 +67,14 @@ router.get('/transaction-stats', async (req, res) => {
   }
 });
 
-
 // API endpoint: Lấy thống kê theo trạng thái cụ thể
 router.get('/transaction-stats/by-status/:status', async (req, res) => {
   const { status } = req.params;
-  const validStatuses = ['Chưa đặt cọc', 'Đang chờ', 'Đã đặt cọc', 'Đã hủy'];
+  const validStatuses = ['Chưa đặt cọc', 'Đang chờ', 'Đã đặt cọc'];
   if (!validStatuses.includes(status)) {
     return res.status(400).json({
       success: false,
-      message: 'Invalid status. Must be one of: Chưa đặt cọc, Đang chờ, Đã đặt cọc, Đã hủy',
+      message: 'Invalid status. Must be one of: Chưa đặt cọc, Đang chờ, Đã đặt cọc',
     });
   }
 
