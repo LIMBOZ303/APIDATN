@@ -73,8 +73,8 @@ const sendEmail = async (to, subject, otp) => {
                 </a>
               </div>
               <p style="color: #9CA3AF; font-size: 12px; margin-top: 20px; text-align: center;">
-                © ${new Date().getFullYear()} Công ty của bạn. Tất cả các quyền được bảo lưu.<br>
-                Địa chỉ: 123 Đường ABC, Thành phố XYZ
+                © ${new Date().getFullYear()} WEDDING PLANNER. Tất cả các quyền được bảo lưu.<br>
+                Địa chỉ: 123 Đường Nguyễn Văn Cừ, Quận 5, Hồ Chí Minh
               </p>
               <p style="color: #9CA3AF; font-size: 11px; margin-top: 15px; text-align: center;">
                 Email này được gửi tự động, vui lòng không trả lời.
@@ -87,7 +87,7 @@ const sendEmail = async (to, subject, otp) => {
     `;
 
     const mailOptions = {
-      from: `"Công ty của bạn" <${process.env.EMAIL_USERNAME}>`,
+      from: `"WEDDING PLANNER" <${process.env.EMAIL_USERNAME}>`,
       to,
       subject,
       html: htmlTemplate,
