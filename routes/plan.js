@@ -50,11 +50,9 @@ router.put('/override/:planId', async (req, res) => {
   
       // Kiểm tra userId của kế hoạch gốc
       if (!originalPlan.userId) {
-        console.error('Kế hoạch gốc thiếu userId:', { planId });
-        return res.status(500).json({
-          success: false,
-          message: 'Kế hoạch gốc không có thông tin người dùng',
-        });
+        console.warn('Kế hoạch gốc thiếu userId, gán từ header user-id:', { planId, userId });
+        originalPlan.userId = userId; // Gán userId từ header
+        await originalPlan.save();
       }
   
       // Kiểm tra quyền sở hữu
