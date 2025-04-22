@@ -62,7 +62,7 @@ router.post('/clone/:planId', async (req, res) => {
         const newPlan = new Plan({
             ...originalPlan.toObject(),
             _id: undefined, // Tạo ID mới
-            status: 'draft', // Trạng thái nháp cho kế hoạch mới
+            status: 'Đang chờ xác nhận', // Trạng thái nháp cho kế hoạch mới
             originalPlanId: planId, // Lưu ID kế hoạch gốc để tham chiếu
             createdAt: new Date(),
             updatedAt: new Date(),
