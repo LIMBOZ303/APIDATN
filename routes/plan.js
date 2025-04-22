@@ -14,6 +14,26 @@ const Lobby_order = require('../models/ListOrder/Lobby_order');   // Viết thư
 const Transaction = require('../models/transactionModel');
 
 
+router.get('/plan/check/:planId', async (req, res) => {
+    try {
+      const { planId } = req.params;
+      const plan = await Plan.findById(planId);
+      if (!plan) {
+        return res.status(404).json({ success: false, message: 'Kế hoạch không tồn tại' });
+      }
+      if (!plan.userId) {
+        return res.status(400).json({ success: false, message: 'Kế hoạch thiếu userId' });
+      }
+      res.json({ success: true, exists: true, userId: plan.userId });
+    } catch (error) {
+      console.error('Lỗi kiểm tra kế hoạch:', {
+        planId: req.params.planId,
+        error: error.message,
+        stack: error.stack,
+      });
+      res.status(500).json({ success: false, message: 'Lỗi server' });
+    }
+  });
 
 // Trong file routes/plan.js
 router.put('/override/:planId', async (req, res) => {
