@@ -25,7 +25,7 @@ const chatMessageSchema = new mongoose.Schema({
     // Loại tin nhắn: 'text' hoặc 'image'
     messageType: {
         type: String,
-        enum: ['text', 'image'],
+        enum: ['text', 'image', 'plan'],
         default: 'text',
         required: true
     },
