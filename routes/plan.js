@@ -14,100 +14,49 @@ const Lobby_order = require('../models/ListOrder/Lobby_order');   // Viết thư
 const Transaction = require('../models/transactionModel');
 
 
-router.get('/plan/check/:planId', async (req, res) => {
-    try {
-      const { planId } = req.params;
-      const plan = await Plan.findById(planId);
-      if (!plan) {
-        return res.status(404).json({ success: false, message: 'Kế hoạch không tồn tại' });
-      }
-      if (!plan.userId) {
-        return res.status(400).json({ success: false, message: 'Kế hoạch thiếu userId' });
-      }
-      res.json({ success: true, exists: true, userId: plan.userId });
-    } catch (error) {
-      console.error('Lỗi kiểm tra kế hoạch:', {
-        planId: req.params.planId,
-        error: error.message,
-        stack: error.stack,
-      });
-      res.status(500).json({ success: false, message: 'Lỗi server' });
-    }
-  });
 
 // Trong file routes/plan.js
 router.put('/override/:planId', async (req, res) => {
     try {
-      const { planId } = req.params;
-      const { newPlanId } = req.body;
-      const userId = req.headers['user-id'];
-  
-      // Kiểm tra các tham số đầu vào
-      if (!planId || !newPlanId || !userId) {
-        return res.status(400).json({
-          success: false,
-          message: 'Thiếu planId, newPlanId hoặc user-id',
+        const { planId } = req.params;
+        const { newPlanId } = req.body;
+
+        if (!planId || !newPlanId) {
+            return res.status(400).json({ success: false, message: 'Thiếu planId hoặc newPlanId' });
+        }
+
+        const originalPlan = await Plan.findById(planId);
+        const newPlan = await Plan.findById(newPlanId);
+
+        if (!originalPlan || !newPlan) {
+            return res.status(404).json({
+                success: false,
+                message: `Kế hoạch không tồn tại: ${!originalPlan ? 'planId' : 'newPlanId'}`
+            });
+        }
+
+        originalPlan.set({
+            ...newPlan.toObject(),
+            _id: originalPlan._id,
+            originalPlanId: undefined,
+            status: 'Chưa đặt cọc',
+            updatedAt: new Date(),
         });
-      }
-  
-      // Tìm kế hoạch gốc và kế hoạch mới
-      const originalPlan = await Plan.findById(planId);
-      const newPlan = await Plan.findById(newPlanId);
-  
-      // Kiểm tra kế hoạch có tồn tại không
-      if (!originalPlan) {
-        return res.status(404).json({
-          success: false,
-          message: 'Kế hoạch gốc không tồn tại',
-        });
-      }
-      if (!newPlan) {
-        return res.status(404).json({
-          success: false,
-          message: 'Kế hoạch mới không tồn tại',
-        });
-      }
-  
-      // Kiểm tra userId của kế hoạch gốc
-      if (!originalPlan.userId) {
-        console.warn('Kế hoạch gốc thiếu userId, gán từ header user-id:', { planId, userId });
-        originalPlan.userId = userId; // Gán userId từ header
+
         await originalPlan.save();
-      }
-  
-      // Kiểm tra quyền sở hữu
-      if (originalPlan.userId.toString() !== userId) {
-        return res.status(403).json({
-          success: false,
-          message: 'Bạn không có quyền chỉnh sửa kế hoạch này',
-        });
-      }
-  
-      // Ghi đè dữ liệu
-      originalPlan.set({
-        ...newPlan.toObject(),
-        _id: originalPlan._id,
-        userId: originalPlan.userId, // Giữ nguyên userId
-        originalPlanId: undefined,
-        status: 'not_deposited',
-        updatedAt: new Date(),
-      });
-  
-      await originalPlan.save();
-      await Plan.deleteOne({ _id: newPlanId });
-  
-      res.json({ success: true, message: 'Kế hoạch đã được ghi đè' });
+        await Plan.deleteOne({ _id: newPlanId });
+
+        res.json({ success: true, message: 'Kế hoạch đã được ghi đè' });
     } catch (error) {
-      console.error('Lỗi ghi đè kế hoạch:', {
-        planId: req.params.planId,
-        newPlanId: req.body.newPlanId,
-        userId: req.headers['user-id'],
-        error: error.message,
-        stack: error.stack,
-      });
-      res.status(500).json({ success: false, message: error.message || 'Lỗi server' });
+        console.error('Lỗi ghi đè kế hoạch:', {
+            planId: req.params.planId,
+            newPlanId: req.body.newPlanId,
+            error: error.message,
+            stack: error.stack,
+        });
+        res.status(500).json({ success: false, message: error.message || 'Lỗi server' });
     }
-  });
+});
 
 // Trong file routes/plan.js
 router.post('/clone/:planId', async (req, res) => {
@@ -122,9 +71,8 @@ router.post('/clone/:planId', async (req, res) => {
         const newPlan = new Plan({
             ...originalPlan.toObject(),
             _id: undefined, // Tạo ID mới
-            userId: null, // Không gắn userId
-            status: 'Đang chờ xác nhận',
-            originalPlanId: planId,
+            status: 'Đang chờ xác nhận', // Trạng thái nháp cho kế hoạch mới
+            originalPlanId: planId, // Lưu ID kế hoạch gốc để tham chiếu
             createdAt: new Date(),
             updatedAt: new Date(),
         });
