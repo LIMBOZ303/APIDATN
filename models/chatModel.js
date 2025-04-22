@@ -19,16 +19,16 @@ const chatMessageSchema = new mongoose.Schema({
     // Loại người gửi: 'user' hoặc 'admin'
     senderType: {
         type: String,
-        enum: ['user', 'admin'],
-        required: true
-    },
-    // Loại tin nhắn: 'text' hoặc 'image'
-    messageType: {
+        enum: ['user', 'admin', 'system'],
+        required: true,
+      },
+      // Loại tin nhắn: 'text', 'image', 'plan', 'confirmation', 'new_plan'
+      messageType: {
         type: String,
-        enum: ['text', 'image', 'plan'],
+        enum: ['text', 'image', 'plan', 'confirmation', 'new_plan'],
         default: 'text',
-        required: true
-    },
+        required: true,
+      },
     // Nội dung tin nhắn (văn bản hoặc ảnh dạng base64)
     message: { 
         type: String, 
