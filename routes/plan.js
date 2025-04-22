@@ -22,6 +22,7 @@ router.put('/override/:planId', async (req, res) => {
       const { newPlanId } = req.body;
       const userId = req.headers['user-id'];
   
+      // Kiểm tra các tham số đầu vào
       if (!planId || !newPlanId || !userId) {
         return res.status(400).json({
           success: false,
@@ -29,13 +30,30 @@ router.put('/override/:planId', async (req, res) => {
         });
       }
   
+      // Tìm kế hoạch gốc và kế hoạch mới
       const originalPlan = await Plan.findById(planId);
       const newPlan = await Plan.findById(newPlanId);
   
-      if (!originalPlan || !newPlan) {
+      // Kiểm tra kế hoạch có tồn tại không
+      if (!originalPlan) {
         return res.status(404).json({
           success: false,
-          message: `Kế hoạch không tồn tại: ${!originalPlan ? 'planId' : 'newPlanId'}`,
+          message: 'Kế hoạch gốc không tồn tại',
+        });
+      }
+      if (!newPlan) {
+        return res.status(404).json({
+          success: false,
+          message: 'Kế hoạch mới không tồn tại',
+        });
+      }
+  
+      // Kiểm tra userId của kế hoạch gốc
+      if (!originalPlan.userId) {
+        console.error('Kế hoạch gốc thiếu userId:', { planId });
+        return res.status(500).json({
+          success: false,
+          message: 'Kế hoạch gốc không có thông tin người dùng',
         });
       }
   
@@ -53,7 +71,7 @@ router.put('/override/:planId', async (req, res) => {
         _id: originalPlan._id,
         userId: originalPlan.userId, // Giữ nguyên userId
         originalPlanId: undefined,
-        status: 'Chưa đặt cọc',
+        status: 'not_deposited',
         updatedAt: new Date(),
       });
   
