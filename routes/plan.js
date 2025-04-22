@@ -21,33 +21,42 @@ router.put('/override/:planId', async (req, res) => {
         const { planId } = req.params;
         const { newPlanId } = req.body;
 
+        if (!planId || !newPlanId) {
+            return res.status(400).json({ success: false, message: 'Thiếu planId hoặc newPlanId' });
+        }
+
         const originalPlan = await Plan.findById(planId);
         const newPlan = await Plan.findById(newPlanId);
 
         if (!originalPlan || !newPlan) {
-            return res.status(404).json({ success: false, message: 'Kế hoạch không tồn tại' });
+            return res.status(404).json({
+                success: false,
+                message: `Kế hoạch không tồn tại: ${!originalPlan ? 'planId' : 'newPlanId'}`
+            });
         }
 
-        // Ghi đè nội dung kế hoạch gốc
         originalPlan.set({
             ...newPlan.toObject(),
-            _id: originalPlan._id, // Giữ ID gốc
-            originalPlanId: undefined, // Xóa tham chiếu nếu có
-            status: 'Chưa đặt cọc', // Cập nhật trạng thái
+            _id: originalPlan._id,
+            originalPlanId: undefined,
+            status: 'Chưa đặt cọc',
             updatedAt: new Date(),
         });
 
         await originalPlan.save();
-        // Xóa kế hoạch mới sau khi ghi đè (tùy chọn)
         await Plan.deleteOne({ _id: newPlanId });
 
         res.json({ success: true, message: 'Kế hoạch đã được ghi đè' });
     } catch (error) {
-        console.error('Lỗi ghi đè kế hoạch:', error);
-        res.status(500).json({ success: false, message: 'Lỗi server' });
+        console.error('Lỗi ghi đè kế hoạch:', {
+            planId: req.params.planId,
+            newPlanId: req.body.newPlanId,
+            error: error.message,
+            stack: error.stack,
+        });
+        res.status(500).json({ success: false, message: error.message || 'Lỗi server' });
     }
 });
-
 
 // Trong file routes/plan.js
 router.post('/clone/:planId', async (req, res) => {
