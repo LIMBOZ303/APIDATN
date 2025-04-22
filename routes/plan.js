@@ -13,6 +13,66 @@ const Lobby_order = require('../models/ListOrder/Lobby_order');   // Viết thư
 
 const Transaction = require('../models/transactionModel');
 
+
+
+// Endpoint: Chuyển trạng thái từ "Đang chờ xác nhận" sang "Chưa đặt cọc"
+router.put('/confirm-to-pending/:planId', async (req, res) => {
+    try {
+        const { planId } = req.params;
+
+        // Kiểm tra planId hợp lệ
+        if (!planId.match(/^[0-9a-fA-F]{24}$/)) {
+            return res.status(400).json({ status: false, message: "PlanId không hợp lệ" });
+        }
+
+        // Tìm kế hoạch
+        const plan = await Plan.findById(planId);
+        if (!plan) {
+            return res.status(404).json({ status: false, message: "Không tìm thấy kế hoạch" });
+        }
+
+        // Kiểm tra trạng thái hiện tại
+        if (plan.status !== 'Đang chờ xác nhận') {
+            return res.status(400).json({ 
+                status: false, 
+                message: "Kế hoạch không ở trạng thái 'Đang chờ xác nhận'" 
+            });
+        }
+
+        // Cập nhật trạng thái kế hoạch
+        plan.status = 'Chưa đặt cọc';
+        await plan.save();
+
+        // Cập nhật trạng thái giao dịch liên quan
+        const transactions = await Transaction.find({ planId });
+        if (transactions.length > 0) {
+            await Transaction.updateMany(
+                { planId, status: 'Đang chờ xác nhận' },
+                { $set: { status: 'Chưa đặt cọc' } }
+            );
+        }
+
+        // Populate lại dữ liệu để trả về
+        const populatedPlan = await Plan.findById(planId)
+            .populate('SanhId', 'name price imageUrl')
+            .populate('UserId', 'name email');
+        const populatedData = await populatePlans([populatedPlan]);
+
+        return res.status(200).json({
+            status: true,
+            message: "Chuyển trạng thái sang 'Chưa đặt cọc' thành công",
+            data: populatedData[0]
+        });
+    } catch (error) {
+        console.error("Lỗi khi chuyển trạng thái:", error);
+        return res.status(500).json({
+            status: false,
+            message: "Lỗi khi chuyển trạng thái",
+            error: error.message
+        });
+    }
+});
+
 // API endpoint: Hủy kế hoạch
 router.put('/cancel/:planId', async (req, res) => {
     try {
