@@ -15,6 +15,69 @@ const Transaction = require('../models/transactionModel');
 
 
 
+// Trong file routes/plan.js
+router.put('/override/:planId', async (req, res) => {
+    try {
+        const { planId } = req.params;
+        const { newPlanId } = req.body;
+
+        const originalPlan = await Plan.findById(planId);
+        const newPlan = await Plan.findById(newPlanId);
+
+        if (!originalPlan || !newPlan) {
+            return res.status(404).json({ success: false, message: 'Kế hoạch không tồn tại' });
+        }
+
+        // Ghi đè nội dung kế hoạch gốc
+        originalPlan.set({
+            ...newPlan.toObject(),
+            _id: originalPlan._id, // Giữ ID gốc
+            originalPlanId: undefined, // Xóa tham chiếu nếu có
+            status: 'confirmed', // Cập nhật trạng thái
+            updatedAt: new Date(),
+        });
+
+        await originalPlan.save();
+        // Xóa kế hoạch mới sau khi ghi đè (tùy chọn)
+        await Plan.deleteOne({ _id: newPlanId });
+
+        res.json({ success: true, message: 'Kế hoạch đã được ghi đè' });
+    } catch (error) {
+        console.error('Lỗi ghi đè kế hoạch:', error);
+        res.status(500).json({ success: false, message: 'Lỗi server' });
+    }
+});
+
+
+// Trong file routes/plan.js
+router.post('/clone/:planId', async (req, res) => {
+    try {
+        const { planId } = req.params;
+        const originalPlan = await Plan.findById(planId);
+        if (!originalPlan) {
+            return res.status(404).json({ success: false, message: 'Kế hoạch không tồn tại' });
+        }
+
+        // Clone kế hoạch
+        const newPlan = new Plan({
+            ...originalPlan.toObject(),
+            _id: undefined, // Tạo ID mới
+            status: 'draft', // Trạng thái nháp cho kế hoạch mới
+            originalPlanId: planId, // Lưu ID kế hoạch gốc để tham chiếu
+            createdAt: new Date(),
+            updatedAt: new Date(),
+        });
+
+        await newPlan.save();
+        res.json({ success: true, data: { newPlanId: newPlan._id } });
+    } catch (error) {
+        console.error('Lỗi clone kế hoạch:', error);
+        res.status(500).json({ success: false, message: 'Lỗi server' });
+    }
+});
+
+
+
 // Endpoint: Chuyển trạng thái từ "Đang chờ xác nhận" sang "Chưa đặt cọc"
 router.put('/confirm-to-pending/:planId', async (req, res) => {
     try {
