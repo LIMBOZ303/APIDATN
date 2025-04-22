@@ -33,7 +33,7 @@ router.put('/override/:planId', async (req, res) => {
             ...newPlan.toObject(),
             _id: originalPlan._id, // Giữ ID gốc
             originalPlanId: undefined, // Xóa tham chiếu nếu có
-            status: 'confirmed', // Cập nhật trạng thái
+            status: 'Đang chờ xác nhận', // Cập nhật trạng thái
             updatedAt: new Date(),
         });
 
