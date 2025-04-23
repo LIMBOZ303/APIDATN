@@ -127,235 +127,30 @@ router.post('/confirm/:tempPlanId', async (req, res) => {
 router.post('/clone/:planId', async (req, res) => {
     try {
         const { planId } = req.params;
-
-        // Tìm kế hoạch gốc và populate các trường liên quan
-        const originalPlan = await Plan.findById(planId)
-            .populate({
-                path: 'SanhId',
-                select: 'name price SoLuongKhach imageUrl createdAt updatedAt'
-            })
-            .populate({
-                path: 'UserId',
-                select: 'name email'
-            })
-            .populate({
-                path: 'caterings',
-                populate: { 
-                    path: 'CateringId', 
-                    select: 'name price imageUrl Description cate_cateringId',
-                    populate: { path: 'cate_cateringId', select: 'name' }
-                }
-            })
-            .populate({
-                path: 'decorates',
-                populate: { 
-                    path: 'DecorateId', 
-                    select: 'name price imageUrl Description Cate_decorateId',
-                    populate: { path: 'Cate_decorateId', select: 'name' }
-                }
-            })
-            .populate({
-                path: 'presents',
-                populate: { 
-                    path: 'PresentId', 
-                    select: 'name price imageUrl Description'
-                }
-            });
-
+        const originalPlan = await Plan.findById(planId);
         if (!originalPlan) {
-            return res.status(404).json({ status: false, message: 'Kế hoạch không tồn tại' });
+            return res.status(404).json({ success: false, message: 'Kế hoạch không tồn tại' });
         }
 
-        // Ghi log để kiểm tra dữ liệu gốc
-        console.log('Original plan data:', {
-            caterings: originalPlan.caterings.map(c => ({
-                id: c._id,
-                CateringId: c.CateringId ? c.CateringId.name : null
-            })),
-            decorates: originalPlan.decorates.map(d => ({
-                id: d._id,
-                DecorateId: d.DecorateId ? d.DecorateId.name : null
-            })),
-            presents: originalPlan.presents.map(p => ({
-                id: p._id,
-                PresentId: p.PresentId ? p.PresentId.name : null,
-                quantity: p.quantity
-            }))
+        // Clone kế hoạch
+        const newPlan = new Plan({
+            ...originalPlan.toObject(),
+            _id: undefined, // Tạo ID mới
+            status: 'Đang chờ xác nhận', // Trạng thái nháp
+            isTemporary: true, // Đánh dấu là kế hoạch giả/tạm thời
+            originalPlanId: planId, // Lưu ID kế hoạch gốc để tham chiếu
+            createdAt: new Date(),
+            updatedAt: new Date(),
         });
 
-        // Kiểm tra nếu kế hoạch gốc không có dịch vụ
-        if (
-            originalPlan.caterings.length === 0 &&
-            originalPlan.decorates.length === 0 &&
-            originalPlan.presents.length === 0
-        ) {
-            console.warn('Warning: Original plan has no catering, decorate, or present services.');
-            // Vẫn tiếp tục tạo bản sao nhưng trả về cảnh báo trong phản hồi
-        }
-
-        // Chuẩn bị dữ liệu cho kế hoạch mới
-        const planData = originalPlan.toObject();
-        delete planData._id; // Xóa _id để tạo ID mới
-        planData.name = `Copy of ${originalPlan.name}`; // Thêm tiền tố "Copy of"
-        planData.status = 'Đang chờ xác nhận';
-        planData.isTemporary = true;
-        planData.originalPlanId = planId;
-        planData.createdAt = new Date();
-        planData.updatedAt = new Date();
-        planData.caterings = [];
-        planData.decorates = [];
-        planData.presents = [];
-        planData.priceDifference = 0;
-
-        // Tạo kế hoạch mới
-        const newPlan = new Plan(planData);
         await newPlan.save();
-
-        // Clone các tài liệu trong Plan_Catering
-        const newCaterings = await Promise.all(
-            originalPlan.caterings.map(async (catering) => {
-                if (!catering.CateringId) {
-                    console.warn(`Skipping catering with missing CateringId: ${catering._id}`);
-                    return null;
-                }
-                const newCatering = new Plan_catering({
-                    PlanId: newPlan._id,
-                    CateringId: catering.CateringId._id,
-                    createdAt: new Date(),
-                    updatedAt: new Date()
-                });
-                await newCatering.save();
-                return newCatering._id;
-            })
-        ).then(results => results.filter(id => id !== null));
-
-        // Clone các tài liệu trong Plan_decorate
-        const newDecorates = await Promise.all(
-            originalPlan.decorates.map(async (decorate) => {
-                if (!decorate.DecorateId) {
-                    console.warn(`Skipping decorate with missing DecorateId: ${decorate._id}`);
-                    return null;
-                }
-                const newDecorate = new Plan_decorate({
-                    PlanId: newPlan._id,
-                    DecorateId: decorate.DecorateId._id,
-                    createdAt: new Date(),
-                    updatedAt: new Date()
-                });
-                await newDecorate.save();
-                return newDecorate._id;
-            })
-        ).then(results => results.filter(id => id !== null));
-
-        // Clone các tài liệu trong Plan_Present
-        const newPresents = await Promise.all(
-            originalPlan.presents.map(async (present) => {
-                if (!present.PresentId) {
-                    console.warn(`Skipping present with missing PresentId: ${present._id}`);
-                    return null;
-                }
-                const newPresent = new Plan_present({
-                    PlanId: newPlan._id,
-                    PresentId: present.PresentId._id,
-                    quantity: present.quantity || 1,
-                    createdAt: new Date(),
-                    updatedAt: new Date()
-                });
-                await newPresent.save();
-                return newPresent._id;
-            })
-        ).then(results => results.filter(id => id !== null));
-
-        // Cập nhật mảng caterings, decorates, presents trong newPlan
-        newPlan.caterings = newCaterings;
-        newPlan.decorates = newDecorates;
-        newPlan.presents = newPresents;
-        await newPlan.save();
-
-        // Tính lại totalPrice và priceDifference
-        await newPlan.calculateTotalPrice();
-        newPlan.priceDifference = (newPlan.planprice || 0) - (newPlan.totalPrice || 0);
-        await newPlan.save();
-
-        // Populate dữ liệu để trả về
-        const populatedNewPlan = await Plan.findById(newPlan._id)
-            .populate({
-                path: 'SanhId',
-                select: 'name price SoLuongKhach imageUrl createdAt updatedAt'
-            })
-            .populate({
-                path: 'UserId',
-                select: 'name email'
-            })
-            .populate({
-                path: 'caterings',
-                populate: { 
-                    path: 'CateringId', 
-                    select: 'name price imageUrl Description cate_cateringId',
-                    populate: { path: 'cate_cateringId', select: 'name' }
-                }
-            })
-            .populate({
-                path: 'decorates',
-                populate: { 
-                    path: 'DecorateId', 
-                    select: 'name price imageUrl Description Cate_decorateId',
-                    populate: { path: 'Cate_decorateId', select: 'name' }
-                }
-            })
-            .populate({
-                path: 'presents',
-                populate: { 
-                    path: 'PresentId', 
-                    select: 'name price imageUrl Description'
-                }
-            });
-
-        // Ghi log để kiểm tra dữ liệu sau populate
-        console.log('Populated plan data:', {
-            caterings: populatedNewPlan.caterings.map(c => ({
-                id: c._id,
-                CateringId: c.CateringId ? c.CateringId.name : null
-            })),
-            decorates: populatedNewPlan.decorates.map(d => ({
-                id: d._id,
-                DecorateId: d.DecorateId ? d.DecorateId.name : null
-            })),
-            presents: populatedNewPlan.presents.map(p => ({
-                id: p._id,
-                PresentId: p.PresentId ? p.PresentId.name : null,
-                quantity: p.quantity
-            }))
-        });
-
-        // Chuẩn bị dữ liệu phản hồi
-        const responseData = {
-            ...populatedNewPlan.toObject(),
-            caterings: populatedNewPlan.caterings.map(item => item.CateringId || {}),
-            decorates: populatedNewPlan.decorates.map(item => item.DecorateId || {}),
-            presents: populatedNewPlan.presents.map(item => ({
-                ...(item.PresentId ? item.PresentId.toObject() : {}),
-                quantity: item.quantity || 1
-            }))
-        };
-
-        // Thêm cảnh báo nếu các mảng rỗng
-        const warnings = [];
-        if (populatedNewPlan.caterings.length === 0) warnings.push('No catering services cloned');
-        if (populatedNewPlan.decorates.length === 0) warnings.push('No decorate services cloned');
-        if (populatedNewPlan.presents.length === 0) warnings.push('No present services cloned');
-
-        res.json({
-            status: true,
-            message: 'Lấy kế hoạch và dịch vụ thành công',
-            warnings: warnings.length > 0 ? warnings : undefined,
-            data: responseData
-        });
+        res.json({ success: true, data: { newPlanId: newPlan._id, planData: newPlan } });
     } catch (error) {
         console.error('Lỗi clone kế hoạch:', error);
-        res.status(500).json({ status: false, message: 'Lỗi server', error: error.message });
+        res.status(500).json({ success: false, message: 'Lỗi server' });
     }
 });
+
 
 
 // Endpoint: Chuyển trạng thái từ "Đang chờ xác nhận" sang "Chưa đặt cọc"
