@@ -34,4 +34,4 @@ Plan_PresentSchema.post('remove', async function () {
     await updatePlanTotalPrice(this.PlanId);
 });
 
-module.exports = mongoose.model('Plan_PresentSchema', Plan_PresentSchema);
+module.exports = mongoose.model('Plan_Present', Plan_PresentSchema);

@@ -8,7 +8,7 @@ const Plan_decorateSchema = new mongoose.Schema({
     },
     DecorateId: { 
         type: mongoose.Schema.Types.ObjectId, 
-        ref: 'decorate', 
+        ref: 'Decorate', 
         required: true 
     },
 }, { timestamps: true });
