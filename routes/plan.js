@@ -127,23 +127,39 @@ router.post('/confirm/:tempPlanId', async (req, res) => {
 router.post('/clone/:planId', async (req, res) => {
     try {
         const { planId } = req.params;
-        const originalPlan = await Plan.findById(planId);
+
+        // Populate các trường tham chiếu để lấy dữ liệu đầy đủ
+        const originalPlan = await Plan.findById(planId)
+            .populate('SanhId')
+            .populate('UserId')
+            .populate({
+                path: 'caterings',
+                populate: { path: 'cate_cateringId' }
+            })
+            .populate({
+                path: 'decorates',
+                populate: { path: 'Cate_decorateId' }
+            })
+            .populate('presents');
+
         if (!originalPlan) {
             return res.status(404).json({ success: false, message: 'Kế hoạch không tồn tại' });
         }
 
         // Clone kế hoạch
-        const newPlan = new Plan({
-            ...originalPlan.toObject(),
-            _id: undefined, // Tạo ID mới
-            status: 'Đang chờ xác nhận', // Trạng thái nháp
-            isTemporary: true, // Đánh dấu là kế hoạch giả/tạm thời
-            originalPlanId: planId, // Lưu ID kế hoạch gốc để tham chiếu
-            createdAt: new Date(),
-            updatedAt: new Date(),
-        });
+        const planData = originalPlan.toObject();
+        // Xóa _id để tạo ID mới và cập nhật các trường cần thiết
+        delete planData._id;
+        planData.status = 'Đang chờ xác nhận';
+        planData.isTemporary = true;
+        planData.originalPlanId = planId;
+        planData.createdAt = new Date();
+        planData.updatedAt = new Date();
 
+        // Tạo bản sao mới
+        const newPlan = new Plan(planData);
         await newPlan.save();
+
         res.json({ success: true, data: { newPlanId: newPlan._id, planData: newPlan } });
     } catch (error) {
         console.error('Lỗi clone kế hoạch:', error);
