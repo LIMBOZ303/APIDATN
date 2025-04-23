@@ -58,6 +58,71 @@ router.put('/override/:planId', async (req, res) => {
     }
 });
 
+
+
+router.delete('/cancel/:tempPlanId', async (req, res) => {
+    try {
+        const { tempPlanId } = req.params;
+
+        // Tìm và xóa kế hoạch giả
+        const tempPlan = await Plan.findById(tempPlanId);
+        if (!tempPlan || !tempPlan.isTemporary) {
+            return res.status(404).json({ success: false, message: 'Kế hoạch tạm thời không tồn tại' });
+        }
+
+        await Plan.deleteOne({ _id: tempPlanId });
+        res.json({ success: true, message: 'Kế hoạch tạm thời đã bị hủy' });
+    } catch (error) {
+        console.error('Lỗi hủy kế hoạch:', {
+            tempPlanId,
+            error: error.message,
+            stack: error.stack,
+        });
+        res.status(500).json({ success: false, message: 'Lỗi server' });
+    }
+});
+
+
+router.post('/confirm/:tempPlanId', async (req, res) => {
+    try {
+        const { tempPlanId } = req.params;
+
+        // Tìm kế hoạch giả
+        const tempPlan = await Plan.findById(tempPlanId);
+        if (!tempPlan || !tempPlan.isTemporary) {
+            return res.status(404).json({ success: false, message: 'Kế hoạch tạm thời không tồn tại' });
+        }
+
+        // Tìm kế hoạch gốc
+        const originalPlan = await Plan.findById(tempPlan.originalPlanId);
+        if (!originalPlan) {
+            return res.status(404).json({ success: false, message: 'Kế hoạch gốc không tồn tại' });
+        }
+
+        // Ghi đè kế hoạch gốc bằng dữ liệu từ kế hoạch giả
+        originalPlan.set({
+            ...tempPlan.toObject(),
+            _id: originalPlan._id, // Giữ ID gốc
+            isTemporary: undefined, // Xóa trường isTemporary
+            originalPlanId: undefined, // Xóa trường originalPlanId
+            status: 'Chưa đặt cọc', // Trạng thái sau khi xác nhận
+            updatedAt: new Date(),
+        });
+
+        await originalPlan.save();
+        await Plan.deleteOne({ _id: tempPlanId }); // Xóa kế hoạch giả
+
+        res.json({ success: true, message: 'Kế hoạch đã được xác nhận và ghi đè' });
+    } catch (error) {
+        console.error('Lỗi xác nhận kế hoạch:', {
+            tempPlanId,
+            error: error.message,
+            stack: error.stack,
+        });
+        res.status(500).json({ success: false, message: 'Lỗi server' });
+    }
+});
+
 // Trong file routes/plan.js
 router.post('/clone/:planId', async (req, res) => {
     try {
@@ -71,7 +136,8 @@ router.post('/clone/:planId', async (req, res) => {
         const newPlan = new Plan({
             ...originalPlan.toObject(),
             _id: undefined, // Tạo ID mới
-            status: 'Đang chờ xác nhận', // Trạng thái nháp cho kế hoạch mới
+            status: 'Đang chờ xác nhận', // Trạng thái nháp
+            isTemporary: true, // Đánh dấu là kế hoạch giả/tạm thời
             originalPlanId: planId, // Lưu ID kế hoạch gốc để tham chiếu
             createdAt: new Date(),
             updatedAt: new Date(),
