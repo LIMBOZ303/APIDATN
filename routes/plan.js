@@ -144,7 +144,7 @@ router.post('/clone/:planId', async (req, res) => {
         });
 
         await newPlan.save();
-        res.json({ success: true, data: { newPlanId: newPlan._id } });
+        res.json({ success: true, data: { newPlanId: newPlan._id, planData: newPlan } });
     } catch (error) {
         console.error('Lỗi clone kế hoạch:', error);
         res.status(500).json({ success: false, message: 'Lỗi server' });
