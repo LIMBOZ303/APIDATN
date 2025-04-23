@@ -194,13 +194,11 @@ router.post('/clone/:planId', async (req, res) => {
         // Clone các tài liệu trong Plan_Catering
         const newCaterings = await Promise.all(
             (originalPlan.caterings || []).map(async (catering) => {
-                const cateringData = catering.toObject();
                 const newCatering = new Plan_catering({
-                    ...cateringData,
-                    _id: undefined, // Tạo ID mới
-                    PlanId: newPlan._id, // Liên kết với kế hoạch mới
+                    PlanId: newPlan._id,
+                    CateringId: catering.CateringId._id,
                     createdAt: new Date(),
-                    updatedAt: new Date(),
+                    updatedAt: new Date()
                 });
                 await newCatering.save();
                 return newCatering._id;
@@ -210,13 +208,11 @@ router.post('/clone/:planId', async (req, res) => {
         // Clone các tài liệu trong Plan_decorate
         const newDecorates = await Promise.all(
             (originalPlan.decorates || []).map(async (decorate) => {
-                const decorateData = decorate.toObject();
                 const newDecorate = new Plan_decorate({
-                    ...decorateData,
-                    _id: undefined, // Tạo ID mới
-                    PlanId: newPlan._id, // Liên kết với kế hoạch mới
+                    PlanId: newPlan._id,
+                    DecorateId: decorate.DecorateId._id,
                     createdAt: new Date(),
-                    updatedAt: new Date(),
+                    updatedAt: new Date()
                 });
                 await newDecorate.save();
                 return newDecorate._id;
@@ -226,13 +222,12 @@ router.post('/clone/:planId', async (req, res) => {
         // Clone các tài liệu trong Plan_Present
         const newPresents = await Promise.all(
             (originalPlan.presents || []).map(async (present) => {
-                const presentData = present.toObject();
                 const newPresent = new Plan_present({
-                    ...presentData,
-                    _id: undefined, // Tạo ID mới
-                    PlanId: newPlan._id, // Liên kết với kế hoạch mới
+                    PlanId: newPlan._id,
+                    PresentId: present.PresentId._id,
+                    quantity: present.quantity || 1,
                     createdAt: new Date(),
-                    updatedAt: new Date(),
+                    updatedAt: new Date()
                 });
                 await newPresent.save();
                 return newPresent._id;
@@ -243,6 +238,7 @@ router.post('/clone/:planId', async (req, res) => {
         newPlan.caterings = newCaterings;
         newPlan.decorates = newDecorates;
         newPlan.presents = newPresents;
+        await newPlan.save();
 
         // Tính lại totalPrice và priceDifference
         await newPlan.calculateTotalPrice();
@@ -283,12 +279,22 @@ router.post('/clone/:planId', async (req, res) => {
                 }
             });
 
+        // Ghi log để kiểm tra dữ liệu sau populate
+        console.log('Populated plan data:', {
+            caterings: populatedNewPlan.caterings,
+            decorates: populatedNewPlan.decorates,
+            presents: populatedNewPlan.presents
+        });
+
         // Chuẩn bị dữ liệu phản hồi theo mẫu
         const responseData = {
             ...populatedNewPlan.toObject(),
             caterings: populatedNewPlan.caterings.map(item => item.CateringId || {}),
             decorates: populatedNewPlan.decorates.map(item => item.DecorateId || {}),
-            presents: populatedNewPlan.presents.map(item => item.PresentId || {})
+            presents: populatedNewPlan.presents.map(item => ({
+                ...(item.PresentId ? item.PresentId.toObject() : {}),
+                quantity: item.quantity || 1
+            }))
         };
 
         res.json({
