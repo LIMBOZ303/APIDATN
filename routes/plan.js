@@ -168,9 +168,9 @@ router.post('/clone/:planId', async (req, res) => {
 
         // Ghi log để kiểm tra dữ liệu gốc
         console.log('Original plan data:', {
-            caterings: originalPlan.caterings,
-            decorates: originalPlan.decorates,
-            presents: originalPlan.presents
+            caterings: originalPlan.caterings.map(c => c.CateringId),
+            decorates: originalPlan.decorates.map(d => d.DecorateId),
+            presents: originalPlan.presents.map(p => ({ id: p.PresentId, quantity: p.quantity }))
         });
 
         // Chuẩn bị dữ liệu cho kế hoạch mới
@@ -281,9 +281,9 @@ router.post('/clone/:planId', async (req, res) => {
 
         // Ghi log để kiểm tra dữ liệu sau populate
         console.log('Populated plan data:', {
-            caterings: populatedNewPlan.caterings,
-            decorates: populatedNewPlan.decorates,
-            presents: populatedNewPlan.presents
+            caterings: populatedNewPlan.caterings.map(c => c.CateringId),
+            decorates: populatedNewPlan.decorates.map(d => d.DecorateId),
+            presents: populatedNewPlan.presents.map(p => ({ id: p.PresentId, quantity: p.quantity }))
         });
 
         // Chuẩn bị dữ liệu phản hồi theo mẫu
