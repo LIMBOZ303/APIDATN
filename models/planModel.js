@@ -15,7 +15,7 @@ const planSchema = new mongoose.Schema({
     plandateevent: { type: Date, required: false, index: true },
     caterings: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Plan_Catering' }],
     decorates: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Plan_decorate' }],
-    presents: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Plan_Present' }],
+    presents: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Plan_PresentSchema' }],
     priceDifference: { type: Number, default: 0 },
     originalPlanId: { type: mongoose.Schema.Types.ObjectId, ref: 'Plan', default: null },
     isTemporary: { type: Boolean, default: false },
