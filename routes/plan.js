@@ -130,15 +130,48 @@ router.post('/clone/:planId', async (req, res) => {
 
         // Tìm kế hoạch gốc và populate các trường liên quan
         const originalPlan = await Plan.findById(planId)
-            .populate('SanhId', 'name price SoLuongKhach imageUrl createdAt updatedAt')
-            .populate('UserId', 'name email')
-            .populate('caterings')
-            .populate('decorates')
-            .populate('presents');
+            .populate({
+                path: 'SanhId',
+                select: 'name price SoLuongKhach imageUrl createdAt updatedAt'
+            })
+            .populate({
+                path: 'UserId',
+                select: 'name email'
+            })
+            .populate({
+                path: 'caterings',
+                populate: { 
+                    path: 'CateringId', 
+                    select: 'name price imageUrl Description cate_cateringId',
+                    populate: { path: 'cate_cateringId', select: 'name' }
+                }
+            })
+            .populate({
+                path: 'decorates',
+                populate: { 
+                    path: 'DecorateId', 
+                    select: 'name price imageUrl Description Cate_decorateId',
+                    populate: { path: 'Cate_decorateId', select: 'name' }
+                }
+            })
+            .populate({
+                path: 'presents',
+                populate: { 
+                    path: 'PresentId', 
+                    select: 'name price imageUrl Description'
+                }
+            });
 
         if (!originalPlan) {
-            return res.status(404).json({ success: false, message: 'Kế hoạch không tồn tại' });
+            return res.status(404).json({ status: false, message: 'Kế hoạch không tồn tại' });
         }
+
+        // Ghi log để kiểm tra dữ liệu gốc
+        console.log('Original plan data:', {
+            caterings: originalPlan.caterings,
+            decorates: originalPlan.decorates,
+            presents: originalPlan.presents
+        });
 
         // Chuẩn bị dữ liệu cho kế hoạch mới
         const planData = originalPlan.toObject();
@@ -160,9 +193,10 @@ router.post('/clone/:planId', async (req, res) => {
 
         // Clone các tài liệu trong Plan_Catering
         const newCaterings = await Promise.all(
-            originalPlan.caterings.map(async (catering) => {
+            (originalPlan.caterings || []).map(async (catering) => {
+                const cateringData = catering.toObject();
                 const newCatering = new Plan_catering({
-                    ...catering.toObject(),
+                    ...cateringData,
                     _id: undefined, // Tạo ID mới
                     PlanId: newPlan._id, // Liên kết với kế hoạch mới
                     createdAt: new Date(),
@@ -175,9 +209,10 @@ router.post('/clone/:planId', async (req, res) => {
 
         // Clone các tài liệu trong Plan_decorate
         const newDecorates = await Promise.all(
-            originalPlan.decorates.map(async (decorate) => {
+            (originalPlan.decorates || []).map(async (decorate) => {
+                const decorateData = decorate.toObject();
                 const newDecorate = new Plan_decorate({
-                    ...decorate.toObject(),
+                    ...decorateData,
                     _id: undefined, // Tạo ID mới
                     PlanId: newPlan._id, // Liên kết với kế hoạch mới
                     createdAt: new Date(),
@@ -190,9 +225,10 @@ router.post('/clone/:planId', async (req, res) => {
 
         // Clone các tài liệu trong Plan_Present
         const newPresents = await Promise.all(
-            originalPlan.presents.map(async (present) => {
+            (originalPlan.presents || []).map(async (present) => {
+                const presentData = present.toObject();
                 const newPresent = new Plan_present({
-                    ...present.toObject(),
+                    ...presentData,
                     _id: undefined, // Tạo ID mới
                     PlanId: newPlan._id, // Liên kết với kế hoạch mới
                     createdAt: new Date(),
@@ -210,13 +246,19 @@ router.post('/clone/:planId', async (req, res) => {
 
         // Tính lại totalPrice và priceDifference
         await newPlan.calculateTotalPrice();
-        newPlan.priceDifference = newPlan.planprice - newPlan.totalPrice;
+        newPlan.priceDifference = (newPlan.planprice || 0) - (newPlan.totalPrice || 0);
         await newPlan.save();
 
         // Populate dữ liệu để trả về
         const populatedNewPlan = await Plan.findById(newPlan._id)
-            .populate('SanhId', 'name price SoLuongKhach imageUrl createdAt updatedAt')
-            .populate('UserId', 'name email')
+            .populate({
+                path: 'SanhId',
+                select: 'name price SoLuongKhach imageUrl createdAt updatedAt'
+            })
+            .populate({
+                path: 'UserId',
+                select: 'name email'
+            })
             .populate({
                 path: 'caterings',
                 populate: { 
@@ -244,9 +286,9 @@ router.post('/clone/:planId', async (req, res) => {
         // Chuẩn bị dữ liệu phản hồi theo mẫu
         const responseData = {
             ...populatedNewPlan.toObject(),
-            caterings: populatedNewPlan.caterings.map(item => item.CateringId),
-            decorates: populatedNewPlan.decorates.map(item => item.DecorateId),
-            presents: populatedNewPlan.presents.map(item => item.PresentId),
+            caterings: populatedNewPlan.caterings.map(item => item.CateringId || {}),
+            decorates: populatedNewPlan.decorates.map(item => item.DecorateId || {}),
+            presents: populatedNewPlan.presents.map(item => item.PresentId || {})
         };
 
         res.json({
@@ -256,7 +298,7 @@ router.post('/clone/:planId', async (req, res) => {
         });
     } catch (error) {
         console.error('Lỗi clone kế hoạch:', error);
-        res.status(500).json({ success: false, message: 'Lỗi server' });
+        res.status(500).json({ status: false, message: 'Lỗi server', error: error.message });
     }
 });
 
