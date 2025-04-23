@@ -128,39 +128,106 @@ router.post('/clone/:planId', async (req, res) => {
     try {
         const { planId } = req.params;
 
-        // Populate các trường tham chiếu để lấy dữ liệu đầy đủ
+        // Tìm kế hoạch gốc và populate các trường liên quan
         const originalPlan = await Plan.findById(planId)
             .populate('SanhId')
             .populate('UserId')
-            .populate({
-                path: 'caterings',
-                populate: { path: 'cate_cateringId' }
-            })
-            .populate({
-                path: 'decorates',
-                populate: { path: 'Cate_decorateId' }
-            })
+            .populate('caterings')
+            .populate('decorates')
             .populate('presents');
 
         if (!originalPlan) {
             return res.status(404).json({ success: false, message: 'Kế hoạch không tồn tại' });
         }
 
-        // Clone kế hoạch
+        // Chuẩn bị dữ liệu cho kế hoạch mới
         const planData = originalPlan.toObject();
-        // Xóa _id để tạo ID mới và cập nhật các trường cần thiết
-        delete planData._id;
+        delete planData._id; // Xóa _id để tạo ID mới
         planData.status = 'Đang chờ xác nhận';
         planData.isTemporary = true;
         planData.originalPlanId = planId;
         planData.createdAt = new Date();
         planData.updatedAt = new Date();
+        planData.caterings = []; // Sẽ cập nhật sau khi clone
+        planData.decorates = []; // Sẽ cập nhật sau khi clone
+        planData.presents = []; // Sẽ cập nhật sau khi clone
 
-        // Tạo bản sao mới
+        // Tạo kế hoạch mới
         const newPlan = new Plan(planData);
         await newPlan.save();
 
-        res.json({ success: true, data: { newPlanId: newPlan._id, planData: newPlan } });
+        // Clone các tài liệu trong Plan_Catering
+        const newCaterings = await Promise.all(
+            originalPlan.caterings.map(async (catering) => {
+                const newCatering = new Plan_catering({
+                    ...catering.toObject(),
+                    _id: undefined, // Tạo ID mới
+                    PlanId: newPlan._id, // Liên kết với kế hoạch mới
+                    createdAt: new Date(),
+                    updatedAt: new Date(),
+                });
+                await newCatering.save();
+                return newCatering._id;
+            })
+        );
+
+        // Clone các tài liệu trong Plan_decorate
+        const newDecorates = await Promise.all(
+            originalPlan.decorates.map(async (decorate) => {
+                const newDecorate = new Plan_decorate({
+                    ...decorate.toObject(),
+                    _id: undefined, // Tạo ID mới
+                    PlanId: newPlan._id, // Liên kết với kế hoạch mới
+                    createdAt: new Date(),
+                    updatedAt: new Date(),
+                });
+                await newDecorate.save();
+                return newDecorate._id;
+            })
+        );
+
+        // Clone các tài liệu trong Plan_Present
+        const newPresents = await Promise.all(
+            originalPlan.presents.map(async (present) => {
+                const newPresent = new Plan_present({
+                    ...present.toObject(),
+                    _id: undefined, // Tạo ID mới
+                    PlanId: newPlan._id, // Liên kết với kế hoạch mới
+                    createdAt: new Date(),
+                    updatedAt: new Date(),
+                });
+                await newPresent.save();
+                return newPresent._id;
+            })
+        );
+
+        // Cập nhật mảng caterings, decorates, presents trong newPlan
+        newPlan.caterings = newCaterings;
+        newPlan.decorates = newDecorates;
+        newPlan.presents = newPresents;
+
+        // Tính lại totalPrice
+        await newPlan.calculateTotalPrice();
+        await newPlan.save();
+
+        // Populate dữ liệu để trả về
+        const populatedNewPlan = await Plan.findById(newPlan._id)
+            .populate('SanhId')
+            .populate('UserId')
+            .populate({
+                path: 'caterings',
+                populate: { path: 'CateringId', select: 'name price imageUrl Description cate_cateringId' }
+            })
+            .populate({
+                path: 'decorates',
+                populate: { path: 'DecorateId', select: 'name price imageUrl Description Cate_decorateId' }
+            })
+            .populate({
+                path: 'presents',
+                populate: { path: 'PresentId', select: 'name price imageUrl Description' }
+            });
+
+        res.json({ success: true, data: { newPlanId: newPlan._id, planData: populatedNewPlan } });
     } catch (error) {
         console.error('Lỗi clone kế hoạch:', error);
         res.status(500).json({ success: false, message: 'Lỗi server' });
