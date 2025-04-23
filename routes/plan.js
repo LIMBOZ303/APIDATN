@@ -183,9 +183,20 @@ router.post('/clone/:planId', async (req, res) => {
             }))
         });
 
+        // Kiểm tra nếu kế hoạch gốc không có dịch vụ
+        if (
+            originalPlan.caterings.length === 0 &&
+            originalPlan.decorates.length === 0 &&
+            originalPlan.presents.length === 0
+        ) {
+            console.warn('Warning: Original plan has no catering, decorate, or present services.');
+            // Vẫn tiếp tục tạo bản sao nhưng trả về cảnh báo trong phản hồi
+        }
+
         // Chuẩn bị dữ liệu cho kế hoạch mới
         const planData = originalPlan.toObject();
         delete planData._id; // Xóa _id để tạo ID mới
+        planData.name = `Copy of ${originalPlan.name}`; // Thêm tiền tố "Copy of"
         planData.status = 'Đang chờ xác nhận';
         planData.isTemporary = true;
         planData.originalPlanId = planId;
@@ -201,9 +212,12 @@ router.post('/clone/:planId', async (req, res) => {
         await newPlan.save();
 
         // Clone các tài liệu trong Plan_Catering
-        const newCateringDocs = await Promise.all(
+        const newCaterings = await Promise.all(
             originalPlan.caterings.map(async (catering) => {
-                if (!catering.CateringId) return null;
+                if (!catering.CateringId) {
+                    console.warn(`Skipping catering with missing CateringId: ${catering._id}`);
+                    return null;
+                }
                 const newCatering = new Plan_catering({
                     PlanId: newPlan._id,
                     CateringId: catering.CateringId._id,
@@ -213,13 +227,15 @@ router.post('/clone/:planId', async (req, res) => {
                 await newCatering.save();
                 return newCatering._id;
             })
-        );
-        const newCaterings = newCateringDocs.filter(id => id !== null);
+        ).then(results => results.filter(id => id !== null));
 
         // Clone các tài liệu trong Plan_decorate
-        const newDecorateDocs = await Promise.all(
+        const newDecorates = await Promise.all(
             originalPlan.decorates.map(async (decorate) => {
-                if (!decorate.DecorateId) return null;
+                if (!decorate.DecorateId) {
+                    console.warn(`Skipping decorate with missing DecorateId: ${decorate._id}`);
+                    return null;
+                }
                 const newDecorate = new Plan_decorate({
                     PlanId: newPlan._id,
                     DecorateId: decorate.DecorateId._id,
@@ -229,13 +245,15 @@ router.post('/clone/:planId', async (req, res) => {
                 await newDecorate.save();
                 return newDecorate._id;
             })
-        );
-        const newDecorates = newDecorateDocs.filter(id => id !== null);
+        ).then(results => results.filter(id => id !== null));
 
         // Clone các tài liệu trong Plan_Present
-        const newPresentDocs = await Promise.all(
+        const newPresents = await Promise.all(
             originalPlan.presents.map(async (present) => {
-                if (!present.PresentId) return null;
+                if (!present.PresentId) {
+                    console.warn(`Skipping present with missing PresentId: ${present._id}`);
+                    return null;
+                }
                 const newPresent = new Plan_present({
                     PlanId: newPlan._id,
                     PresentId: present.PresentId._id,
@@ -246,8 +264,7 @@ router.post('/clone/:planId', async (req, res) => {
                 await newPresent.save();
                 return newPresent._id;
             })
-        );
-        const newPresents = newPresentDocs.filter(id => id !== null);
+        ).then(results => results.filter(id => id !== null));
 
         // Cập nhật mảng caterings, decorates, presents trong newPlan
         newPlan.caterings = newCaterings;
@@ -322,9 +339,16 @@ router.post('/clone/:planId', async (req, res) => {
             }))
         };
 
+        // Thêm cảnh báo nếu các mảng rỗng
+        const warnings = [];
+        if (populatedNewPlan.caterings.length === 0) warnings.push('No catering services cloned');
+        if (populatedNewPlan.decorates.length === 0) warnings.push('No decorate services cloned');
+        if (populatedNewPlan.presents.length === 0) warnings.push('No present services cloned');
+
         res.json({
             status: true,
             message: 'Lấy kế hoạch và dịch vụ thành công',
+            warnings: warnings.length > 0 ? warnings : undefined,
             data: responseData
         });
     } catch (error) {
