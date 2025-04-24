@@ -852,11 +852,12 @@ router.get('/user/:userId', async (req, res) => {
 
         // Tìm tất cả kế hoạch của user
         const plans = await Plan.find({ UserId: userId })
-            .populate('SanhId', 'name price SoLuongKhach')  // Chỉ lấy một số trường cần thiết
-            .populate('UserId', 'name email');  // Chỉ lấy name & email
+            .populate('SanhId', 'name price SoLuongKhach') // Chỉ lấy một số trường cần thiết
+            .populate('UserId', 'name email'); // Chỉ lấy name & email
 
+        // Nếu không có kế hoạch, trả về mảng rỗng
         if (!plans.length) {
-            return res.status(404).json({ status: false, message: "Không tìm thấy kế hoạch nào cho người dùng này" });
+            return res.status(200).json({ status: true, message: "Không có kế hoạch nào", data: [] });
         }
 
         // Lấy danh sách dịch vụ từ các bảng trung gian
