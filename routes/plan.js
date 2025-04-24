@@ -144,7 +144,71 @@ router.post('/clone/:planId', async (req, res) => {
         });
 
         await newPlan.save();
-        res.json({ success: true, data: { newPlanId: newPlan._id, planData: newPlan } });
+
+        // Sao chép các dịch vụ liên quan
+        const caterings = await Plan_catering.find({ PlanId: planId });
+        const decorates = await Plan_decorate.find({ PlanId: planId });
+        const presents = await Plan_present.find({ PlanId: planId });
+
+        // Tạo bản ghi mới cho các dịch vụ
+        const newCaterings = caterings.map(catering => ({
+            PlanId: newPlan._id,
+            CateringId: catering.CateringId,
+        }));
+        const newDecorates = decorates.map(decorate => ({
+            PlanId: newPlan._id,
+            DecorateId: decorate.DecorateId,
+        }));
+        const newPresents = presents.map(present => ({
+            PlanId: newPlan._id,
+            PresentId: present.PresentId,
+            quantity: present.quantity || 1, // Sao chép quantity
+        }));
+
+        await Promise.all([
+            newCaterings.length > 0 ? Plan_catering.insertMany(newCaterings) : Promise.resolve(),
+            newDecorates.length > 0 ? Plan_decorate.insertMany(newDecorates) : Promise.resolve(),
+            newPresents.length > 0 ? Plan_present.insertMany(newPresents) : Promise.resolve(),
+        ]);
+
+        // Populate dữ liệu của newPlan trước khi trả về
+        const populatedNewPlan = await Plan.findById(newPlan._id)
+            .populate('SanhId', 'name price imageUrl')
+            .populate('UserId', 'name email')
+            .populate({
+                path: 'caterings',
+                populate: { path: 'CateringId', select: 'name price imageUrl' },
+            })
+            .populate({
+                path: 'decorates',
+                populate: { path: 'DecorateId', select: 'name price imageUrl' },
+            })
+            .populate({
+                path: 'presents',
+                populate: { path: 'PresentId', select: 'name price imageUrl' },
+            });
+
+        // Tính lại totalPrice nếu cần
+        if (!populatedNewPlan.totalPrice) {
+            await populatedNewPlan.calculateTotalPrice();
+            await populatedNewPlan.save();
+        }
+
+        res.json({
+            success: true,
+            data: {
+                newPlanId: newPlan._id,
+                planData: {
+                    ...populatedNewPlan.toObject(),
+                    caterings: populatedNewPlan.caterings.map(item => item.CateringId),
+                    decorates: populatedNewPlan.decorates.map(item => item.DecorateId),
+                    presents: populatedNewPlan.presents.map(item => ({
+                        ...item.PresentId.toObject(),
+                        quantity: item.quantity || 1,
+                    })),
+                },
+            },
+        });
     } catch (error) {
         console.error('Lỗi clone kế hoạch:', error);
         res.status(500).json({ success: false, message: 'Lỗi server' });
