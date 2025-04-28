@@ -192,6 +192,13 @@ router.post('/confirm/:tempPlanId', async (req, res) => {
 router.post('/clone/:planId', async (req, res) => {
     try {
         const { planId } = req.params;
+        const { numberOfGuests } = req.body; // Lấy số lượng khách từ request body
+
+        // Kiểm tra số lượng khách hợp lệ
+        if (!numberOfGuests || numberOfGuests <= 0) {
+            return res.status(400).json({ success: false, message: 'Số lượng khách không hợp lệ' });
+        }
+
         const originalPlan = await Plan.findById(planId);
         if (!originalPlan) {
             return res.status(404).json({ success: false, message: 'Kế hoạch không tồn tại' });
@@ -206,6 +213,7 @@ router.post('/clone/:planId', async (req, res) => {
             originalPlanId: planId, // Lưu ID kế hoạch gốc để tham chiếu
             createdAt: new Date(),
             updatedAt: new Date(),
+            numberOfGuests, // Lưu số lượng khách
         });
 
         await newPlan.save();
@@ -219,6 +227,7 @@ router.post('/clone/:planId', async (req, res) => {
         const newCaterings = caterings.map(catering => ({
             PlanId: newPlan._id,
             CateringId: catering.CateringId,
+            quantity: Math.ceil(numberOfGuests / 10), // Giả sử 1 món ăn phục vụ 10 khách
         }));
         const newDecorates = decorates.map(decorate => ({
             PlanId: newPlan._id,
@@ -253,11 +262,9 @@ router.post('/clone/:planId', async (req, res) => {
                 populate: { path: 'PresentId', select: 'name price imageUrl' },
             });
 
-        // Tính lại totalPrice nếu cần
-        if (!populatedNewPlan.totalPrice) {
-            await populatedNewPlan.calculateTotalPrice();
-            await populatedNewPlan.save();
-        }
+        // Tính lại totalPrice
+        await populatedNewPlan.calculateTotalPrice();
+        await populatedNewPlan.save();
 
         res.json({
             success: true,
@@ -265,7 +272,11 @@ router.post('/clone/:planId', async (req, res) => {
                 newPlanId: newPlan._id,
                 planData: {
                     ...populatedNewPlan.toObject(),
-                    caterings: populatedNewPlan.caterings.map(item => item.CateringId),
+                    numberOfGuests, // Bao gồm số lượng khách trong phản hồi
+                    caterings: populatedNewPlan.caterings.map(item => ({
+                        ...item.CateringId.toObject(),
+                        quantity: item.quantity || 1,
+                    })),
                     decorates: populatedNewPlan.decorates.map(item => item.DecorateId),
                     presents: populatedNewPlan.presents.map(item => ({
                         ...item.PresentId.toObject(),
