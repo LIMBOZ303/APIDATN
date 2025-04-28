@@ -192,125 +192,135 @@ router.post('/confirm/:tempPlanId', async (req, res) => {
 router.post('/clone/:planId', async (req, res) => {
     try {
         const { planId } = req.params;
+        const { guestCount: soLuongKhachYeuCau } = req.body; // Cho phép ghi đè số lượng khách qua body
+
+        // Kiểm tra planId
+        if (!planId.match(/^[0-9a-fA-F]{24}$/)) {
+            return res.status(400).json({ success: false, message: 'PlanId không hợp lệ' });
+        }
 
         // Tìm kế hoạch gốc
-        const originalPlan = await Plan.findById(planId);
+        const originalPlan = await Plan.findById(planId)
+            .populate('SanhId', 'name price imageUrl SoLuongKhach');
         if (!originalPlan) {
             return res.status(404).json({ success: false, message: 'Kế hoạch không tồn tại' });
         }
 
-        // Lấy số lượng khách từ plansoluongkhach
-        const guestCount = originalPlan.plansoluongkhach || 0;
-
-        // Kiểm tra số lượng khách hợp lệ
+        // Xác định số lượng khách
+        const guestCount = soLuongKhachYeuCau || originalPlan.plansoluongkhach || 0;
         if (guestCount <= 0) {
             return res.status(400).json({ success: false, message: 'Số lượng khách không hợp lệ' });
         }
 
-        // Kiểm tra sức chứa của sảnh
-        const sanh = await Sanh.findById(originalPlan.SanhId);
-        if (sanh && sanh.SoLuongKhach < guestCount) {
-            return res.status(400).json({ 
-                success: false, 
-                message: `Sảnh ${sanh.name} chỉ chứa tối đa ${sanh.SoLuongKhach} khách, không đủ cho ${guestCount} khách` 
+        // Kiểm tra sức chứa sảnh
+        if (originalPlan.SanhId && originalPlan.SanhId.SoLuongKhach < guestCount) {
+            return res.status(400).json({
+                success: false,
+                message: `Sảnh ${originalPlan.SanhId.name} chỉ chứa tối đa ${originalPlan.SanhId.SoLuongKhach} khách, không đủ cho ${guestCount} khách`
             });
         }
 
-        // Clone kế hoạch
-        const newPlan = new Plan({
-            ...originalPlan.toObject(),
-            _id: undefined, // Tạo ID mới
-            status: 'Đang chờ xác nhận', // Trạng thái nháp
-            isTemporary: true, // Đánh dấu là kế hoạch tạm thời
-            originalPlanId: planId, // Lưu ID kế hoạch gốc
-            createdAt: new Date(),
-            updatedAt: new Date(),
-            plansoluongkhach: guestCount, // Sử dụng số lượng khách từ kế hoạch gốc
-        });
-
-        await newPlan.save();
-
-        // Sao chép các dịch vụ liên quan
-        const caterings = await Plan_catering.find({ PlanId: planId });
-        const decorates = await Plan_decorate.find({ PlanId: planId });
-        const presents = await Plan_present.find({ PlanId: planId });
-
-        // Tính số bàn dựa trên số lượng khách (1 bàn phục vụ 10 khách)
+        // Tính số bàn (1 bàn phục vụ 10 khách)
         const soLuongBan = Math.ceil(guestCount / 10);
 
-        // Tạo bản ghi mới cho các dịch vụ
+        // Sao chép dịch vụ đồng thời
+        const [caterings, decorates, presents] = await Promise.all([
+            Plan_catering.find({ PlanId: planId }),
+            Plan_decorate.find({ PlanId: planId }),
+            Plan_present.find({ PlanId: planId })
+        ]);
+
+        // Tạo kế hoạch mới
+        const newPlan = new Plan({
+            ...originalPlan.toObject(),
+            _id: undefined,
+            status: 'Đang chờ xác nhận',
+            isTemporary: true,
+            originalPlanId: planId,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+            plansoluongkhach: guestCount
+        });
+
+        // Lưu kế hoạch mới
+        await newPlan.save();
+
+        // Chuẩn bị bản ghi dịch vụ mới
         const newCaterings = caterings.map(catering => ({
             PlanId: newPlan._id,
             CateringId: catering.CateringId,
-            quantity: soLuongBan, // Số lượng món ăn dựa trên số bàn
+            quantity: soLuongBan
         }));
 
         const newDecorates = decorates.map(decorate => ({
             PlanId: newPlan._id,
-            DecorateId: decorate.DecorateId,
+            DecorateId: decorate.DecorateId
         }));
 
         const newPresents = presents.map(present => ({
             PlanId: newPlan._id,
             PresentId: present.PresentId,
-            quantity: present.quantity || guestCount, // Số lượng quà tặng bằng số khách hoặc giữ nguyên
+            quantity: present.quantity || guestCount
         }));
 
-        // Thêm các dịch vụ vào cơ sở dữ liệu
+        // Thêm dịch vụ mới đồng thời
         await Promise.all([
-            newCaterings.length > 0 ? Plan_catering.insertMany(newCaterings) : Promise.resolve(),
-            newDecorates.length > 0 ? Plan_decorate.insertMany(newDecorates) : Promise.resolve(),
-            newPresents.length > 0 ? Plan_present.insertMany(newPresents) : Promise.resolve(),
+            newCaterings.length ? Plan_catering.insertMany(newCaterings) : Promise.resolve(),
+            newDecorates.length ? Plan_decorate.insertMany(newDecorates) : Promise.resolve(),
+            newPresents.length ? Plan_present.insertMany(newPresents) : Promise.resolve()
         ]);
 
-        // Populate dữ liệu của newPlan trước khi trả về
+        // Populate dữ liệu kế hoạch mới
         const populatedNewPlan = await Plan.findById(newPlan._id)
             .populate('SanhId', 'name price imageUrl SoLuongKhach')
             .populate('UserId', 'name email')
             .populate({
                 path: 'caterings',
-                populate: { path: 'CateringId', select: 'name price imageUrl' },
+                populate: { path: 'CateringId', select: 'name price imageUrl' }
             })
             .populate({
                 path: 'decorates',
-                populate: { path: 'DecorateId', select: 'name price imageUrl' },
+                populate: { path: 'DecorateId', select: 'name price imageUrl' }
             })
             .populate({
                 path: 'presents',
-                populate: { path: 'PresentId', select: 'name price imageUrl' },
+                populate: { path: 'PresentId', select: 'name price imageUrl' }
             });
 
-        // Tính lại totalPrice dựa trên số lượng khách
+        // Tính và cập nhật tổng giá
         await populatedNewPlan.calculateTotalPrice(guestCount);
         await populatedNewPlan.save();
 
         // Chuẩn bị dữ liệu trả về
+        const responseData = {
+            ...populatedNewPlan.toObject(),
+            plansoluongkhach: guestCount,
+            caterings: populatedNewPlan.caterings.map(item => ({
+                ...item.CateringId.toObject(),
+                quantity: item.quantity || soLuongBan
+            })),
+            decorates: populatedNewPlan.decorates.map(item => item.DecorateId),
+            presents: populatedNewPlan.presents.map(item => ({
+                ...item.PresentId.toObject(),
+                quantity: item.quantity || guestCount
+            }))
+        };
+
         res.json({
             success: true,
+            message: 'Kế hoạch đã được sao chép thành công',
             data: {
                 newPlanId: newPlan._id,
-                planData: {
-                    ...populatedNewPlan.toObject(),
-                    plansoluongkhach: guestCount,
-                    caterings: populatedNewPlan.caterings.map(item => ({
-                        ...item.CateringId.toObject(),
-                        quantity: item.quantity || soLuongBan,
-                    })),
-                    decorates: populatedNewPlan.decorates.map(item => item.DecorateId),
-                    presents: populatedNewPlan.presents.map(item => ({
-                        ...item.PresentId.toObject(),
-                        quantity: item.quantity || guestCount,
-                    })),
-                },
-            },
+                planData: responseData
+            }
         });
     } catch (error) {
         console.error('Lỗi clone kế hoạch:', {
             planId,
             error: error.message,
-            stack: error.stack,
+            stack: error.stack
         });
-        res.status(500).json({ success: false, message: 'Lỗi server' });
+        res.status(500).json({ success: false, message: error.message || 'Lỗi server' });
     }
 });
 
