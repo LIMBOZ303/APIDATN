@@ -192,7 +192,6 @@ router.post('/confirm/:tempPlanId', async (req, res) => {
 router.post('/clone/:planId', async (req, res) => {
     try {
         const { planId } = req.params;
-        const { numberOfGuests } = req.body;
 
         // Tìm kế hoạch gốc
         const originalPlan = await Plan.findById(planId);
@@ -200,10 +199,8 @@ router.post('/clone/:planId', async (req, res) => {
             return res.status(404).json({ success: false, message: 'Kế hoạch không tồn tại' });
         }
 
-        // Xác định số lượng khách: ưu tiên numberOfGuests từ body, nếu không có thì lấy từ originalPlan
-        const guestCount = numberOfGuests && numberOfGuests > 0 
-            ? numberOfGuests 
-            : originalPlan.plansoluongkhach || 0;
+        // Lấy số lượng khách từ plansoluongkhach
+        const guestCount = originalPlan.plansoluongkhach || 0;
 
         // Kiểm tra số lượng khách hợp lệ
         if (guestCount <= 0) {
@@ -228,7 +225,7 @@ router.post('/clone/:planId', async (req, res) => {
             originalPlanId: planId, // Lưu ID kế hoạch gốc
             createdAt: new Date(),
             updatedAt: new Date(),
-            plansoluongkhach: guestCount, // Sử dụng số lượng khách đã xác định
+            plansoluongkhach: guestCount, // Sử dụng số lượng khách từ kế hoạch gốc
         });
 
         await newPlan.save();
@@ -256,7 +253,7 @@ router.post('/clone/:planId', async (req, res) => {
         const newPresents = presents.map(present => ({
             PlanId: newPlan._id,
             PresentId: present.PresentId,
-            quantity_SYM: present.quantity || guestCount, // Số lượng quà tặng bằng số khách hoặc giữ nguyên
+            quantity: present.quantity || guestCount, // Số lượng quà tặng bằng số khách hoặc giữ nguyên
         }));
 
         // Thêm các dịch vụ vào cơ sở dữ liệu
@@ -310,7 +307,6 @@ router.post('/clone/:planId', async (req, res) => {
     } catch (error) {
         console.error('Lỗi clone kế hoạch:', {
             planId,
-            numberOfGuests,
             error: error.message,
             stack: error.stack,
         });
