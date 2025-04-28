@@ -192,16 +192,31 @@ router.post('/confirm/:tempPlanId', async (req, res) => {
 router.post('/clone/:planId', async (req, res) => {
     try {
         const { planId } = req.params;
-        const { numberOfGuests } = req.body; // Lấy số lượng khách từ request body
+        const { numberOfGuests } = req.body;
 
-        // Kiểm tra số lượng khách hợp lệ
-        if (!numberOfGuests || numberOfGuests <= 0) {
-            return res.status(400).json({ success: false, message: 'Số lượng khách không hợp lệ' });
-        }
-
+        // Tìm kế hoạch gốc
         const originalPlan = await Plan.findById(planId);
         if (!originalPlan) {
             return res.status(404).json({ success: false, message: 'Kế hoạch không tồn tại' });
+        }
+
+        // Xác định số lượng khách: ưu tiên numberOfGuests từ body, nếu không có thì lấy từ originalPlan
+        const guestCount = numberOfGuests && numberOfGuests > 0 
+            ? numberOfGuests 
+            : originalPlan.plansoluongkhach || 0;
+
+        // Kiểm tra số lượng khách hợp lệ
+        if (guestCount <= 0) {
+            return res.status(400).json({ success: false, message: 'Số lượng khách không hợp lệ' });
+        }
+
+        // Kiểm tra sức chứa của sảnh
+        const sanh = await Sanh.findById(originalPlan.SanhId);
+        if (sanh && sanh.SoLuongKhach < guestCount) {
+            return res.status(400).json({ 
+                success: false, 
+                message: `Sảnh ${sanh.name} chỉ chứa tối đa ${sanh.SoLuongKhach} khách, không đủ cho ${guestCount} khách` 
+            });
         }
 
         // Clone kế hoạch
@@ -209,11 +224,11 @@ router.post('/clone/:planId', async (req, res) => {
             ...originalPlan.toObject(),
             _id: undefined, // Tạo ID mới
             status: 'Đang chờ xác nhận', // Trạng thái nháp
-            isTemporary: true, // Đánh dấu là kế hoạch giả/tạm thời
-            originalPlanId: planId, // Lưu ID kế hoạch gốc để tham chiếu
+            isTemporary: true, // Đánh dấu là kế hoạch tạm thời
+            originalPlanId: planId, // Lưu ID kế hoạch gốc
             createdAt: new Date(),
             updatedAt: new Date(),
-            numberOfGuests, // Lưu số lượng khách
+            plansoluongkhach: guestCount, // Sử dụng số lượng khách đã xác định
         });
 
         await newPlan.save();
@@ -223,22 +238,28 @@ router.post('/clone/:planId', async (req, res) => {
         const decorates = await Plan_decorate.find({ PlanId: planId });
         const presents = await Plan_present.find({ PlanId: planId });
 
+        // Tính số bàn dựa trên số lượng khách (1 bàn phục vụ 10 khách)
+        const soLuongBan = Math.ceil(guestCount / 10);
+
         // Tạo bản ghi mới cho các dịch vụ
         const newCaterings = caterings.map(catering => ({
             PlanId: newPlan._id,
             CateringId: catering.CateringId,
-            quantity: Math.ceil(numberOfGuests / 10), // Giả sử 1 món ăn phục vụ 10 khách
+            quantity: soLuongBan, // Số lượng món ăn dựa trên số bàn
         }));
+
         const newDecorates = decorates.map(decorate => ({
             PlanId: newPlan._id,
             DecorateId: decorate.DecorateId,
         }));
+
         const newPresents = presents.map(present => ({
             PlanId: newPlan._id,
             PresentId: present.PresentId,
-            quantity: present.quantity || 1, // Sao chép quantity
+            quantity_SYM: present.quantity || guestCount, // Số lượng quà tặng bằng số khách hoặc giữ nguyên
         }));
 
+        // Thêm các dịch vụ vào cơ sở dữ liệu
         await Promise.all([
             newCaterings.length > 0 ? Plan_catering.insertMany(newCaterings) : Promise.resolve(),
             newDecorates.length > 0 ? Plan_decorate.insertMany(newDecorates) : Promise.resolve(),
@@ -247,7 +268,7 @@ router.post('/clone/:planId', async (req, res) => {
 
         // Populate dữ liệu của newPlan trước khi trả về
         const populatedNewPlan = await Plan.findById(newPlan._id)
-            .populate('SanhId', 'name price imageUrl')
+            .populate('SanhId', 'name price imageUrl SoLuongKhach')
             .populate('UserId', 'name email')
             .populate({
                 path: 'caterings',
@@ -262,35 +283,40 @@ router.post('/clone/:planId', async (req, res) => {
                 populate: { path: 'PresentId', select: 'name price imageUrl' },
             });
 
-        // Tính lại totalPrice
-        await populatedNewPlan.calculateTotalPrice();
+        // Tính lại totalPrice dựa trên số lượng khách
+        await populatedNewPlan.calculateTotalPrice(guestCount);
         await populatedNewPlan.save();
 
+        // Chuẩn bị dữ liệu trả về
         res.json({
             success: true,
             data: {
                 newPlanId: newPlan._id,
                 planData: {
                     ...populatedNewPlan.toObject(),
-                    numberOfGuests, // Bao gồm số lượng khách trong phản hồi
+                    plansoluongkhach: guestCount,
                     caterings: populatedNewPlan.caterings.map(item => ({
                         ...item.CateringId.toObject(),
-                        quantity: item.quantity || 1,
+                        quantity: item.quantity || soLuongBan,
                     })),
                     decorates: populatedNewPlan.decorates.map(item => item.DecorateId),
                     presents: populatedNewPlan.presents.map(item => ({
                         ...item.PresentId.toObject(),
-                        quantity: item.quantity || 1,
+                        quantity: item.quantity || guestCount,
                     })),
                 },
             },
         });
     } catch (error) {
-        console.error('Lỗi clone kế hoạch:', error);
+        console.error('Lỗi clone kế hoạch:', {
+            planId,
+            numberOfGuests,
+            error: error.message,
+            stack: error.stack,
+        });
         res.status(500).json({ success: false, message: 'Lỗi server' });
     }
 });
-
 
 
 // Endpoint: Chuyển trạng thái từ "Đang chờ xác nhận" sang "Chưa đặt cọc"
