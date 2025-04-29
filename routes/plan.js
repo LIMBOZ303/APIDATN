@@ -81,10 +81,12 @@ router.put('/override/:planId', async (req, res) => {
             originalPlanId: undefined,
             isTemporary: undefined,
             status: 'Chưa đặt cọc',
+            plansoluongkhach: newPlan.plansoluongkhach || originalPlan.plansoluongkhach || 0,
             updatedAt: new Date(),
         });
 
-        // Lưu kế hoạch (middleware pre('save') sẽ tính totalPrice)
+        // Tính lại totalPrice
+        await originalPlan.calculateTotalPrice();
         await originalPlan.save();
 
         // Populate dữ liệu trả về
@@ -211,27 +213,23 @@ router.post('/confirm/:tempPlanId', async (req, res) => {
 router.post('/clone/:planId', async (req, res) => {
     try {
         const { planId } = req.params;
-        const { guestCount: soLuongKhachYeuCau } = req.body; // Cho phép ghi đè số lượng khách qua body
+        const { guestCount: soLuongKhachYeuCau } = req.body;
 
-        // Kiểm tra planId
         if (!planId.match(/^[0-9a-fA-F]{24}$/)) {
             return res.status(400).json({ success: false, message: 'PlanId không hợp lệ' });
         }
 
-        // Tìm kế hoạch gốc
         const originalPlan = await Plan.findById(planId)
             .populate('SanhId', 'name price imageUrl SoLuongKhach');
         if (!originalPlan) {
             return res.status(404).json({ success: false, message: 'Kế hoạch không tồn tại' });
         }
 
-        // Xác định số lượng khách
         const guestCount = soLuongKhachYeuCau || originalPlan.plansoluongkhach || 0;
         if (guestCount <= 0) {
             return res.status(400).json({ success: false, message: 'Số lượng khách không hợp lệ' });
         }
 
-        // Kiểm tra sức chứa sảnh
         if (originalPlan.SanhId && originalPlan.SanhId.SoLuongKhach < guestCount) {
             return res.status(400).json({
                 success: false,
@@ -239,17 +237,14 @@ router.post('/clone/:planId', async (req, res) => {
             });
         }
 
-        // Tính số bàn (1 bàn phục vụ 10 khách)
         const soLuongBan = Math.ceil(guestCount / 10);
 
-        // Sao chép dịch vụ đồng thời
         const [caterings, decorates, presents] = await Promise.all([
             Plan_catering.find({ PlanId: planId }),
             Plan_decorate.find({ PlanId: planId }),
             Plan_present.find({ PlanId: planId })
         ]);
 
-        // Tạo kế hoạch mới
         const newPlan = new Plan({
             ...originalPlan.toObject(),
             _id: undefined,
@@ -261,10 +256,8 @@ router.post('/clone/:planId', async (req, res) => {
             plansoluongkhach: guestCount
         });
 
-        // Lưu kế hoạch mới
         await newPlan.save();
 
-        // Chuẩn bị bản ghi dịch vụ mới
         const newCaterings = caterings.map(catering => ({
             PlanId: newPlan._id,
             CateringId: catering.CateringId,
@@ -282,14 +275,16 @@ router.post('/clone/:planId', async (req, res) => {
             quantity: present.quantity || guestCount
         }));
 
-        // Thêm dịch vụ mới đồng thời
         await Promise.all([
             newCaterings.length ? Plan_catering.insertMany(newCaterings) : Promise.resolve(),
             newDecorates.length ? Plan_decorate.insertMany(newDecorates) : Promise.resolve(),
             newPresents.length ? Plan_present.insertMany(newPresents) : Promise.resolve()
         ]);
 
-        // Populate dữ liệu kế hoạch mới
+        // Tính lại totalPrice
+        await newPlan.calculateTotalPrice();
+        await newPlan.save();
+
         const populatedNewPlan = await Plan.findById(newPlan._id)
             .populate('SanhId', 'name price imageUrl SoLuongKhach')
             .populate('UserId', 'name email')
@@ -306,11 +301,6 @@ router.post('/clone/:planId', async (req, res) => {
                 populate: { path: 'PresentId', select: 'name price imageUrl' }
             });
 
-        // Tính và cập nhật tổng giá
-        await populatedNewPlan.calculateTotalPrice(guestCount);
-        await populatedNewPlan.save();
-
-        // Chuẩn bị dữ liệu trả về
         const responseData = {
             ...populatedNewPlan.toObject(),
             plansoluongkhach: guestCount,
@@ -607,56 +597,46 @@ router.post('/add', async (req, res) => {
 router.get('/all', async (req, res) => {
     try {
         const plans = await Plan.find()
-            .populate('SanhId') // Populate thông tin sảnh
-            .populate('UserId', 'name email'); // Populate thông tin người dùng
+            .populate('SanhId', 'name price imageUrl')
+            .populate('UserId', 'name email');
 
-        // Lấy dịch vụ từ bảng trung gian
         const populatedPlans = await Promise.all(plans.map(async (plan) => {
-            const caterings = await Plan_catering.find({ PlanId: plan._id })
-                .populate({
-                    path: 'CateringId',
-                    populate: {
-                        path: 'cate_cateringId', // Populate lồng
-                        select: 'name' // Chỉ lấy name
-                    }
-                });
-            const decorates = await Plan_decorate.find({ PlanId: plan._id })
-                .populate({
-                    path: 'DecorateId',
-                    populate: {
-                        path: 'Cate_decorateId',
-                        select: 'name'
-                    }
-                });
-            const presents = await Plan_present.find({ PlanId: plan._id })
-                .populate({
-                    path: 'PresentId',
-                    populate: {
-                        path: 'Cate_presentId',
-                        select: 'name'
-                    }
-                });
+            // Tính lại totalPrice
+            await plan.calculateTotalPrice();
+            await plan.save();
 
-            // Nếu totalPrice chưa có hoặc bị lỗi, tự động cập nhật
-            if (!plan.totalPrice) {
-                await plan.calculateTotalPrice();
-                await plan.save(); // Lưu lại totalPrice vào DB
-            }
+            const caterings = await Plan_catering.find({ PlanId: plan._id }).populate({
+                path: 'CateringId',
+                select: 'name price imageUrl',
+                populate: { path: 'cate_cateringId', select: 'name' },
+            });
+            const decorates = await Plan_decorate.find({ PlanId: plan._id }).populate({
+                path: 'DecorateId',
+                select: 'name price imageUrl',
+                populate: { path: 'Cate_decorateId', select: 'name' },
+            });
+            const presents = await Plan_present.find({ PlanId: plan._id }).populate({
+                path: 'PresentId',
+                select: 'name price imageUrl',
+                populate: { path: 'Cate_presentId', select: 'name' },
+            });
 
             return {
                 ...plan.toObject(),
-                totalPrice: plan.totalPrice, // Đảm bảo totalPrice hiển thị
+                totalPrice: plan.totalPrice,
                 caterings: caterings.map(item => item.CateringId),
                 decorates: decorates.map(item => item.DecorateId),
-                presents: presents.map(item => item.PresentId),
-
+                presents: presents.map(item => ({
+                    ...item.PresentId.toObject(),
+                    quantity: item.quantity || 1,
+                })),
             };
         }));
 
         res.status(200).json({ status: true, message: "Lấy danh sách kế hoạch thành công", data: populatedPlans });
     } catch (error) {
-        console.log(error);
-        res.status(500).json({ status: false, message: "Thất bại khi lấy danh sách kế hoạch" });
+        console.error("Lỗi khi lấy danh sách kế hoạch:", error);
+        res.status(500).json({ status: false, message: "Thất bại khi lấy danh sách kế hoạch", error: error.message });
     }
 });
 
@@ -806,13 +786,13 @@ router.put('/update/:id', async (req, res) => {
         }
 
         if (!forceDuplicate && oldPlan.UserId?.toString() === userId) {
-            // Cập nhật các trường cơ bản, bỏ totalPrice để middleware xử lý
+            // Cập nhật các trường cơ bản
             Object.assign(oldPlan, {
                 UserId: updateData.UserId || oldPlan.UserId,
                 SanhId: resolvedSanhId,
                 status: updateData.status || oldPlan.status,
                 plandateevent: updateData.plandateevent || oldPlan.plandateevent,
-                plansoluongkhach: updateData.plansoluongkhach || oldPlan.plansoluongkhach,
+                plansoluongkhach: updateData.plansoluongkhach || oldPlan.plansoluongkhach || 0,
                 name: updateData.name || oldPlan.name,
                 planprice: updateData.planprice || oldPlan.planprice,
             });
@@ -845,12 +825,13 @@ router.put('/update/:id', async (req, res) => {
                 newPresents.length > 0 ? Plan_present.insertMany(newPresents) : Promise.resolve(),
             ]);
 
-            // Lưu kế hoạch (middleware pre('save') sẽ tính totalPrice)
+            // Tính lại totalPrice
+            await oldPlan.calculateTotalPrice();
             await oldPlan.save();
 
             // Populate dữ liệu trả về
             const populatedUpdatedPlan = await Plan.findById(planId)
-                .populate('SanhId')
+                .populate('SanhId', 'name price imageUrl')
                 .populate({
                     path: 'caterings',
                     populate: { path: 'CateringId', select: 'name price imageUrl' },
@@ -902,11 +883,12 @@ router.put('/update/:id', async (req, res) => {
             newPresents.length > 0 ? Plan_present.insertMany(newPresents) : Promise.resolve(),
         ]);
 
-        // Lưu kế hoạch mới (middleware pre('save') sẽ tính totalPrice)
+        // Tính lại totalPrice
+        await newPlan.calculateTotalPrice();
         await newPlan.save();
 
         const populatedNewPlan = await Plan.findById(newPlan._id)
-            .populate('SanhId')
+            .populate('SanhId', 'name price imageUrl')
             .populate({
                 path: 'caterings',
                 populate: { path: 'CateringId', select: 'name price imageUrl' },
@@ -936,43 +918,52 @@ router.get('/user/:userId', async (req, res) => {
     try {
         const { userId } = req.params;
 
-        // Kiểm tra xem userId có hợp lệ không
         if (!userId.match(/^[0-9a-fA-F]{24}$/)) {
             return res.status(400).json({ status: false, message: "UserId không hợp lệ" });
         }
 
-        // Tìm tất cả kế hoạch của user
         const plans = await Plan.find({ UserId: userId })
-            .populate('SanhId', 'name price SoLuongKhach') // Chỉ lấy một số trường cần thiết
-            .populate('UserId', 'name email'); // Chỉ lấy name & email
+            .populate('SanhId', 'name price SoLuongKhach')
+            .populate('UserId', 'name email');
 
-        // Nếu không có kế hoạch, trả về mảng rỗng
         if (!plans.length) {
             return res.status(200).json({ status: true, message: "Không có kế hoạch nào", data: [] });
         }
 
-        // Lấy danh sách dịch vụ từ các bảng trung gian
-        const planIds = plans.map(plan => plan._id);
+        const populatedPlans = await Promise.all(plans.map(async (plan) => {
+            // Tính lại totalPrice
+            await plan.calculateTotalPrice();
+            await plan.save();
 
-        const caterings = await Plan_catering.find({ PlanId: { $in: planIds } }).populate('CateringId');
-        const decorates = await Plan_decorate.find({ PlanId: { $in: planIds } }).populate('DecorateId');
-        const presents = await Plan_present.find({ PlanId: { $in: planIds } }).populate('PresentId');
+            const caterings = await Plan_catering.find({ PlanId: plan._id }).populate({
+                path: 'CateringId',
+                select: 'name price imageUrl',
+            });
+            const decorates = await Plan_decorate.find({ PlanId: plan._id }).populate({
+                path: 'DecorateId',
+                select: 'name price imageUrl',
+            });
+            const presents = await Plan_present.find({ PlanId: plan._id }).populate({
+                path: 'PresentId',
+                select: 'name price imageUrl',
+            });
 
-        // Kết hợp dịch vụ vào từng kế hoạch
-        const enrichedPlans = plans.map(plan => {
             return {
                 ...plan.toObject(),
-                caterings: caterings.filter(item => item.PlanId.toString() === plan._id.toString()).map(item => item.CateringId),
-                decorates: decorates.filter(item => item.PlanId.toString() === plan._id.toString()).map(item => item.DecorateId),
-                presents: presents.filter(item => item.PlanId.toString() === plan._id.toString()).map(item => item.PresentId)
+                totalPrice: plan.totalPrice,
+                caterings: caterings.map(item => item.CateringId),
+                decorates: decorates.map(item => item.DecorateId),
+                presents: presents.map(item => ({
+                    ...item.PresentId.toObject(),
+                    quantity: item.quantity || 1,
+                })),
             };
-        });
+        }));
 
-        res.status(200).json({ status: true, message: "Lấy danh sách kế hoạch thành công", data: enrichedPlans });
-
+        res.status(200).json({ status: true, message: "Lấy danh sách kế hoạch thành công", data: populatedPlans });
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ status: false, message: "Lỗi khi lấy danh sách kế hoạch" });
+        console.error("Lỗi khi lấy danh sách kế hoạch:", error);
+        res.status(500).json({ status: false, message: "Lỗi khi lấy danh sách kế hoạch", error: error.message });
     }
 });
 
