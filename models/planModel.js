@@ -22,12 +22,19 @@ const planSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 // Middleware tính toán priceDifference
-planSchema.pre('save', function (next) {
+planSchema.pre('save', async function (next) {
+    // Chuyển đổi plandateevent nếu cần
     if (typeof this.plandateevent === 'string') {
         const [day, month, year] = this.plandateevent.split('/');
         this.plandateevent = new Date(`${year}-${month}-${day}T00:00:00.000Z`);
     }
+
+    // Tính totalPrice
+    await this.calculateTotalPrice();
+
+    // Tính priceDifference
     this.priceDifference = (this.planprice || 0) - (this.totalPrice || 0);
+
     next();
 });
 
