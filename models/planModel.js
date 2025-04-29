@@ -23,19 +23,24 @@ const planSchema = new mongoose.Schema({
 
 // Middleware tính toán priceDifference
 planSchema.pre('save', async function (next) {
-    // Chuyển đổi plandateevent nếu cần
-    if (typeof this.plandateevent === 'string') {
-        const [day, month, year] = this.plandateevent.split('/');
-        this.plandateevent = new Date(`${year}-${month}-${day}T00:00:00.000Z`);
+    try {
+        // Chuyển đổi plandateevent nếu cần
+        if (typeof this.plandateevent === 'string') {
+            const [day, month, year] = this.plandateevent.split('/');
+            this.plandateevent = new Date(`${year}-${month}-${day}T00:00:00.000Z`);
+        }
+
+        // Tính totalPrice
+        await this.calculateTotalPrice();
+
+        // Tính priceDifference
+        this.priceDifference = (this.planprice || 0) - (this.totalPrice || 0);
+
+        next();
+    } catch (error) {
+        console.error(`Lỗi trong middleware pre('save') cho plan ${this._id}:`, error);
+        next(error);
     }
-
-    // Tính totalPrice
-    await this.calculateTotalPrice();
-
-    // Tính priceDifference
-    this.priceDifference = (this.planprice || 0) - (this.totalPrice || 0);
-
-    next();
 });
 
 // Middleware đặt tên Plan tự động nếu chưa có
@@ -49,38 +54,71 @@ planSchema.pre('save', async function (next) {
 
 // Phương thức tính totalPrice dựa trên plansoluongkhach
 planSchema.methods.calculateTotalPrice = async function (plansoluongkhach = this.plansoluongkhach) {
-    if (!this.SanhId) {
+    try {
+        if (!this.SanhId) {
+            console.warn(`SanhId không tồn tại cho plan ${this._id}`);
+            this.totalPrice = 0;
+            return this.totalPrice;
+        }
+
+        // Kiểm tra plansoluongkhach
+        if (!plansoluongkhach || plansoluongkhach <= 0) {
+            console.warn(`plansoluongkhach không hợp lệ cho plan ${this._id}: ${plansoluongkhach}`);
+            plansoluongkhach = 0;
+        }
+
+        // Lấy thông tin từ các collection liên quan
+        const [sanh, caterings, decorates, presents] = await Promise.all([
+            Sanh.findById(this.SanhId, 'price').lean(),
+            Plan_catering.find({ PlanId: this._id }).populate('CateringId', 'price').lean(),
+            Plan_decorate.find({ PlanId: this._id }).populate('DecorateId', 'price').lean(),
+            Plan_present.find({ PlanId: this._id }).populate('PresentId', 'price').lean(),
+        ]);
+
+        // Tính số bàn dựa trên plansoluongkhach
+        const soLuongBan = plansoluongkhach ? Math.ceil(plansoluongkhach / 10) : 0;
+
+        // Tính tổng giá catering
+        const totalCateringPrice = soLuongBan > 0
+            ? caterings.reduce((sum, item) => {
+                  const price = item.CateringId?.price || 0;
+                  return sum + (price * soLuongBan);
+              }, 0)
+            : 0;
+
+        // Tính tổng giá decorate
+        const totalDecoratePrice = decorates.reduce((sum, item) => {
+            const price = item.DecorateId?.price || 0;
+            return sum + price;
+        }, 0);
+
+        // Tính tổng giá presents
+        const totalPresentPrice = presents.reduce((sum, item) => {
+            const price = item.PresentId?.price || 0;
+            const quantity = item.quantity || 1;
+            return sum + (price * quantity);
+        }, 0);
+
+        // Tính totalPrice
+        this.totalPrice = (sanh?.price || 0) + totalCateringPrice + totalDecoratePrice + totalPresentPrice;
+
+        // Ghi log để kiểm tra
+        console.log(`Calculated totalPrice for plan ${this._id}:`, {
+            sanhPrice: sanh?.price || 0,
+            totalCateringPrice,
+            totalDecoratePrice,
+            totalPresentPrice,
+            totalPrice: this.totalPrice,
+            plansoluongkhach,
+            soLuongBan,
+        });
+
+        return this.totalPrice;
+    } catch (error) {
+        console.error(`Lỗi tính totalPrice cho plan ${this._id}:`, error);
         this.totalPrice = 0;
         return this.totalPrice;
     }
-
-    // Lấy thông tin từ các collection liên quan
-    const sanh = await Sanh.findById(this.SanhId, 'price');
-    const caterings = await Plan_catering.find({ PlanId: this._id }).populate('CateringId', 'price');
-    const decorates = await Plan_decorate.find({ PlanId: this._id }).populate('DecorateId', 'price');
-    const presents = await Plan_present.find({ PlanId: this._id }).populate('PresentId', 'price');
-
-    // Tính số bàn dựa trên plansoluongkhach
-    const soLuongBan = plansoluongkhach ? Math.ceil(plansoluongkhach / 10) : 0;
-
-    // Tính tổng giá catering
-    const totalCateringPrice = soLuongBan > 0
-        ? caterings.reduce((sum, item) => sum + ((item.CateringId?.price || 0) * soLuongBan), 0)
-        : 0;
-
-    // Tính tổng giá decorate
-    const totalDecoratePrice = decorates.reduce((sum, item) => sum + (item.DecorateId?.price || 0), 0);
-
-    // Tính tổng giá presents (không phụ thuộc số lượng khách)
-    const totalPresentPrice = presents.reduce((sum, item) => {
-        const price = item.PresentId?.price || 0;
-        const quantity = item.quantity || 1; // Mặc định quantity là 1 nếu không có
-        return sum + (price * quantity);
-    }, 0);
-
-    // Tính totalPrice
-    this.totalPrice = (sanh?.price || 0) + totalCateringPrice + totalDecoratePrice + totalPresentPrice;
-    return this.totalPrice;
 };
 
 // Virtual field: Trả về plandateevent dạng dd/mm/yyyy
