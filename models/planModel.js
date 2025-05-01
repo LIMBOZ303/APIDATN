@@ -26,7 +26,13 @@ planSchema.pre('save', async function (next) {
     try {
         // Kiểm tra trạng thái của kế hoạch
         if (['Đang chờ', 'Đã đặt cọc'].includes(this.status)) {
-            console.log(`Bỏ qua tính toán totalPrice và priceDifference cho plan ${this._id} vì trạng thái là ${this.status}`);
+            console.log(`Bỏ qua tất cả cập nhật cho plan ${this._id} vì trạng thái là ${this.status}`);
+            // Lấy bản gốc của kế hoạch từ database để giữ nguyên dữ liệu
+            const originalPlan = await mongoose.model('Plan').findById(this._id);
+            if (originalPlan) {
+                // Khôi phục tất cả các trường về giá trị gốc
+                Object.assign(this, originalPlan.toObject());
+            }
             return next();
         }
 
@@ -114,7 +120,6 @@ planSchema.methods.calculateTotalPrice = async function (plansoluongkhach = this
         // Tính totalPrice
         this.totalPrice = (sanh?.price || 0) + totalCateringPrice + totalDecoratePrice + totalPresentPrice;
 
-        // Ghi log để kiểm tra
         console.log(`Calculated totalPrice for plan ${this._id}:`, {
             sanhPrice: sanh?.price || 0,
             totalCateringPrice,

@@ -44,7 +44,7 @@ router.put('/override/:planId', async (req, res) => {
         if (['Đang chờ', 'Đã đặt cọc'].includes(originalPlan.status)) {
             return res.status(403).json({
                 success: false,
-                message: `Không thể ghi đè kế hoạch ở trạng thái ${originalPlan.status}`
+                message: `Không thể ghi đè kế hoạch hoặc bất kỳ dịch vụ nào ở trạng thái ${originalPlan.status}`
             });
         }
 
@@ -52,13 +52,14 @@ router.put('/override/:planId', async (req, res) => {
             return res.status(403).json({ success: false, message: 'Không có quyền chỉnh sửa kế hoạch này' });
         }
 
-        // Tiếp tục logic ghi đè như trước
+        // Xóa dịch vụ cũ
         await Promise.all([
             Plan_catering.deleteMany({ PlanId: planId }),
             Plan_decorate.deleteMany({ PlanId: planId }),
             Plan_present.deleteMany({ PlanId: planId }),
         ]);
 
+        // Sao chép dịch vụ từ newPlan
         const [caterings, decorates, presents] = await Promise.all([
             Plan_catering.find({ PlanId: newPlanId }),
             Plan_decorate.find({ PlanId: newPlanId }),
@@ -169,7 +170,7 @@ router.post('/confirm/:tempPlanId', async (req, res) => {
         if (['Đang chờ', 'Đã đặt cọc'].includes(originalPlan.status)) {
             return res.status(403).json({
                 success: false,
-                message: `Không thể xác nhận kế hoạch vì kế hoạch gốc ở trạng thái ${originalPlan.status}`
+                message: `Không thể xác nhận kế hoạch hoặc cập nhật dịch vụ vì kế hoạch gốc ở trạng thái ${originalPlan.status}`
             });
         }
 
@@ -739,11 +740,10 @@ router.put('/update/:id', async (req, res) => {
         if (['Đang chờ', 'Đã đặt cọc'].includes(oldPlan.status)) {
             return res.status(403).json({
                 status: false,
-                message: `Không thể cập nhật kế hoạch ở trạng thái ${oldPlan.status}`
+                message: `Không thể cập nhật kế hoạch hoặc bất kỳ dịch vụ nào ở trạng thái ${oldPlan.status}`
             });
         }
 
-        // Hàm ánh xạ ID
         const resolveIds = async (ids, type) => {
             const resolvedIds = [];
             let orderModel;
@@ -991,6 +991,14 @@ router.delete('/:planId', async (req, res) => {
         const plan = await Plan.findById(planId);
         if (!plan) {
             return res.status(404).json({ status: false, message: "Không tìm thấy kế hoạch" });
+        }
+
+        // Kiểm tra trạng thái của kế hoạch
+        if (['Đang chờ', 'Đã đặt cọc'].includes(plan.status)) {
+            return res.status(403).json({
+                status: false,
+                message: `Không thể xóa dịch vụ trong kế hoạch ở trạng thái ${plan.status}`
+            });
         }
 
         if (serviceType && serviceId) {
