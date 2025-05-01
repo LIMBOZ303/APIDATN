@@ -24,6 +24,12 @@ const planSchema = new mongoose.Schema({
 // Middleware tính toán priceDifference
 planSchema.pre('save', async function (next) {
     try {
+        // Kiểm tra trạng thái của kế hoạch
+        if (['Đang chờ', 'Đã đặt cọc'].includes(this.status)) {
+            console.log(`Bỏ qua tính toán totalPrice và priceDifference cho plan ${this._id} vì trạng thái là ${this.status}`);
+            return next();
+        }
+
         // Chuyển đổi plandateevent nếu cần
         if (typeof this.plandateevent === 'string') {
             const [day, month, year] = this.plandateevent.split('/');
@@ -55,6 +61,12 @@ planSchema.pre('save', async function (next) {
 // Phương thức tính totalPrice dựa trên plansoluongkhach
 planSchema.methods.calculateTotalPrice = async function (plansoluongkhach = this.plansoluongkhach) {
     try {
+        // Kiểm tra trạng thái của kế hoạch
+        if (['Đang chờ', 'Đã đặt cọc'].includes(this.status)) {
+            console.log(`Bỏ qua tính toán totalPrice cho plan ${this._id} vì trạng thái là ${this.status}`);
+            return this.totalPrice || 0;
+        }
+
         if (!this.SanhId) {
             console.warn(`SanhId không tồn tại cho plan ${this._id}`);
             this.totalPrice = 0;
