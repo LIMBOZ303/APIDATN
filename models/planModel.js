@@ -61,12 +61,6 @@ planSchema.methods.calculateTotalPrice = async function (plansoluongkhach = this
             return this.totalPrice;
         }
 
-        // Kiểm tra trạng thái kế hoạch
-        if (['Đang chờ', 'Đã đặt cọc'].includes(this.status)) {
-            console.log(`Kế hoạch ${this._id} ở trạng thái '${this.status}', giữ nguyên totalPrice`);
-            return this.totalPrice || 0;
-        }
-
         // Kiểm tra plansoluongkhach
         if (!plansoluongkhach || plansoluongkhach <= 0) {
             console.warn(`plansoluongkhach không hợp lệ cho plan ${this._id}: ${plansoluongkhach}`);
