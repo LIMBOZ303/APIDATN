@@ -646,64 +646,63 @@ router.get('/all', async (req, res) => {
 // Lấy kế hoạch theo ID
 router.get('/:id', async (req, res) => {
     try {
-        const planId = req.params.id;
-
-        if (!planId.match(/^[0-9a-fA-F]{24}$/)) {
-            return res.status(400).json({ status: false, message: "ID không hợp lệ" });
-        }
-
-        const plan = await Plan.findById(planId)
-            .populate('SanhId')
-            .populate('UserId', 'name email');
-
-        if (!plan) {
-            return res.status(404).json({ status: false, message: "Không tìm thấy kế hoạch" });
-        }
-
-        const caterings = await Plan_catering.find({ PlanId: planId })
-            .populate({
-                path: 'CateringId',
-                populate: { path: 'cate_cateringId', select: 'name' }
-            });
-
-        const decorates = await Plan_decorate.find({ PlanId: planId })
-            .populate({
-                path: 'DecorateId',
-                populate: { path: 'Cate_decorateId', select: 'name' }
-            });
-
-        const presents = await Plan_present.find({ PlanId: planId })
-            .populate({
-                path: 'PresentId',
-                populate: { path: 'Cate_presentId', select: 'name' }
-            });
-
-        console.log('Raw presents data:', JSON.stringify(presents, null, 2));
-
-        if (!plan.totalPrice) {
-            await plan.calculateTotalPrice();
-            await plan.save();
-        }
-
-        res.status(200).json({
-            status: true,
-            message: "Lấy kế hoạch và dịch vụ thành công",
-            data: {
-                ...plan.toObject(),
-                totalPrice: plan.totalPrice,
-                caterings: caterings.map(item => item.CateringId),
-                decorates: decorates.map(item => item.DecorateId),
-                presents: presents.map(item => ({
-                    ...(item.PresentId ? item.PresentId.toObject() : {}),
-                    quantity: item.quantity || 0 // Đảm bảo quantity luôn có giá trị
-                }))
-            }
+      const planId = req.params.id;
+  
+      if (!planId.match(/^[0-9a-fA-F]{24}$/)) {
+        return res.status(400).json({ status: false, message: "ID không hợp lệ" });
+      }
+  
+      const plan = await Plan.findById(planId)
+        .populate('SanhId')
+        .populate('UserId', 'name email');
+  
+      if (!plan) {
+        return res.status(404).json({ status: false, message: "Không tìm thấy kế hoạch" });
+      }
+  
+      const caterings = await Plan_catering.find({ PlanId: planId })
+        .populate({
+          path: 'CateringId',
+          populate: { path: 'cate_cateringId', select: 'name' },
         });
+  
+      const decorates = await Plan_decorate.find({ PlanId: planId })
+        .populate({
+          path: 'DecorateId',
+          populate: { path: 'Cate_decorateId', select: 'name' },
+        });
+  
+      const presents = await Plan_present.find({ PlanId: planId })
+        .populate({
+          path: 'PresentId',
+          populate: { path: 'Cate_presentId', select: 'name' },
+        });
+  
+      // Không tính lại totalPrice nếu trạng thái là "Đã đặt cọc"
+      if (plan.status !== 'Đã đặt cọc' && !plan.totalPrice) {
+        await plan.calculateTotalPrice();
+        await plan.save();
+      }
+  
+      res.status(200).json({
+        status: true,
+        message: "Lấy kế hoạch và dịch vụ thành công",
+        data: {
+          ...plan.toObject(),
+          totalPrice: plan.totalPrice, // Đảm bảo trả về totalPrice
+          caterings: caterings.map(item => item.CateringId),
+          decorates: decorates.map(item => item.DecorateId),
+          presents: presents.map(item => ({
+            ...(item.PresentId ? item.PresentId.toObject() : {}),
+            quantity: item.quantity || 0,
+          })),
+        },
+      });
     } catch (error) {
-        console.error("Lỗi khi lấy kế hoạch:", error);
-        res.status(500).json({ status: false, message: "Lỗi khi lấy kế hoạch", error: error.message });
+      console.error("Lỗi khi lấy kế hoạch:", error);
+      res.status(500).json({ status: false, message: "Lỗi khi lấy kế hoạch", error: error.message });
     }
-});
+  });
 
 
 
