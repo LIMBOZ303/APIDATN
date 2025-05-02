@@ -665,7 +665,7 @@ router.get('/:id', async (req, res) => {
 
         // Kiểm tra trạng thái kế hoạch
         const status = plan.status?.toLowerCase();
-        const isPendingOrDeposited = ['đang chờ', 'đã đặt cọc'].includes(status);
+        const isPendingOrDeposited = ['Đang chờ', 'Đã đặt cọc'].includes(status);
 
         let responseData;
 
