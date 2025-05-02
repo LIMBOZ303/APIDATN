@@ -11,9 +11,6 @@ const Plan_lobbySchema = new mongoose.Schema({
         ref: 'Sanh', 
         required: true 
     },
-    name: { type: String },
-    price: { type: Number },
-    imageUrl: { type: String },
 }, { timestamps: true });
 
 // 🔄 Hàm cập nhật totalPrice

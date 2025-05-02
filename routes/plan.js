@@ -36,20 +36,12 @@ router.put('/override/:planId', async (req, res) => {
         if (!originalPlan || !newPlan) {
             return res.status(404).json({
                 success: false,
-                message: `Kế hoạch không tồn tại: ${!originalPlan ? 'planId' : 'newPlanId'}`,
+                message: `Kế hoạch không tồn tại: ${!originalPlan ? 'planId' : 'newPlanId'}`
             });
         }
 
         if (originalPlan.UserId && originalPlan.UserId.toString() !== userId) {
             return res.status(403).json({ success: false, message: 'Không có quyền chỉnh sửa kế hoạch này' });
-        }
-
-        // Kiểm tra trạng thái 'Đã đặt cọc'
-        if (originalPlan.status === 'Đã đặt cọc') {
-            return res.status(403).json({
-                success: false,
-                message: 'Không thể ghi đè kế hoạch đã đặt cọc',
-            });
         }
 
         // Xóa dịch vụ cũ
@@ -457,16 +449,14 @@ router.put('/cancel/:planId', async (req, res) => {
 // Hàm chung để populate và tính toán plans
 const populatePlans = async (plans) => {
     return await Promise.all(plans.map(async (plan) => {
-        const isDeposited = plan.status === 'Đã đặt cọc';
-
         const caterings = await Plan_catering.find({ PlanId: plan._id })
             .populate({
                 path: 'CateringId',
                 select: 'name price imageUrl',
                 populate: {
                     path: 'cate_cateringId',
-                    select: 'name',
-                },
+                    select: 'name'
+                }
             });
         const decorates = await Plan_decorate.find({ PlanId: plan._id })
             .populate({
@@ -474,8 +464,8 @@ const populatePlans = async (plans) => {
                 select: 'name price imageUrl',
                 populate: {
                     path: 'Cate_decorateId',
-                    select: 'name',
-                },
+                    select: 'name'
+                }
             });
         const presents = await Plan_present.find({ PlanId: plan._id })
             .populate({
@@ -483,12 +473,12 @@ const populatePlans = async (plans) => {
                 select: 'name price imageUrl',
                 populate: {
                     path: 'Cate_presentId',
-                    select: 'name',
-                },
+                    select: 'name'
+                }
             });
 
         // Nếu totalPrice chưa có hoặc bị lỗi, tự động cập nhật
-        if (!plan.totalPrice || !isDeposited) {
+        if (!plan.totalPrice) {
             await plan.calculateTotalPrice();
             await plan.save();
         }
@@ -496,24 +486,11 @@ const populatePlans = async (plans) => {
         return {
             ...plan.toObject(),
             totalPrice: plan.totalPrice,
-            caterings: caterings.map(item => ({
-                name: isDeposited && item.name ? item.name : item.CateringId?.name,
-                price: isDeposited && item.price ? item.price : item.CateringId?.price,
-                imageUrl: isDeposited && item.imageUrl ? item.imageUrl : item.CateringId?.imageUrl,
-                cate_cateringId: item.CateringId?.cate_cateringId,
-            })),
-            decorates: decorates.map(item => ({
-                name: isDeposited && item.name ? item.name : item.DecorateId?.name,
-                price: isDeposited && item.price ? item.price : item.DecorateId?.price,
-                imageUrl: isDeposited && item.imageUrl ? item.imageUrl : item.DecorateId?.imageUrl,
-                Cate_decorateId: item.DecorateId?.Cate_decorateId,
-            })),
+            caterings: caterings.map(item => item.CateringId),
+            decorates: decorates.map(item => item.DecorateId),
             presents: presents.map(item => ({
-                name: isDeposited && item.name ? item.name : item.PresentId?.name,
-                price: isDeposited && item.price ? item.price : item.PresentId?.price,
-                imageUrl: isDeposited && item.imageUrl ? item.imageUrl : item.PresentId?.imageUrl,
-                Cate_presentId: item.PresentId?.Cate_presentId,
-                quantity: item.quantity || 1,
+                ...item.PresentId.toObject(), // Lấy toàn bộ thông tin của PresentId
+                quantity: item.quantity // Thêm quantity từ Plan_present
             })),
         };
     }));
@@ -676,27 +653,55 @@ router.get('/:id', async (req, res) => {
         }
 
         const plan = await Plan.findById(planId)
-            .populate('SanhId', 'name price imageUrl')
+            .populate('SanhId')
             .populate('UserId', 'name email');
 
         if (!plan) {
             return res.status(404).json({ status: false, message: "Không tìm thấy kế hoạch" });
         }
 
-        const populatedData = await populatePlans([plan]);
+        const caterings = await Plan_catering.find({ PlanId: planId })
+            .populate({
+                path: 'CateringId',
+                populate: { path: 'cate_cateringId', select: 'name' }
+            });
+
+        const decorates = await Plan_decorate.find({ PlanId: planId })
+            .populate({
+                path: 'DecorateId',
+                populate: { path: 'Cate_decorateId', select: 'name' }
+            });
+
+        const presents = await Plan_present.find({ PlanId: planId })
+            .populate({
+                path: 'PresentId',
+                populate: { path: 'Cate_presentId', select: 'name' }
+            });
+
+        console.log('Raw presents data:', JSON.stringify(presents, null, 2));
+
+        if (!plan.totalPrice) {
+            await plan.calculateTotalPrice();
+            await plan.save();
+        }
 
         res.status(200).json({
             status: true,
             message: "Lấy kế hoạch và dịch vụ thành công",
-            data: populatedData[0],
+            data: {
+                ...plan.toObject(),
+                totalPrice: plan.totalPrice,
+                caterings: caterings.map(item => item.CateringId),
+                decorates: decorates.map(item => item.DecorateId),
+                presents: presents.map(item => ({
+                    ...(item.PresentId ? item.PresentId.toObject() : {}),
+                    quantity: item.quantity || 0 // Đảm bảo quantity luôn có giá trị
+                }))
+            }
         });
     } catch (error) {
         console.error("Lỗi khi lấy kế hoạch:", error);
-        res.status(500).json({
-            status: false,
-            message: "Lỗi khi lấy kế hoạch",
-            error: error.message,
-        });
+        res.status(500).json({ status: false, message: "Lỗi khi lấy kế hoạch", error: error.message });
     }
 });
 
@@ -720,14 +725,6 @@ router.put('/update/:id', async (req, res) => {
 
         if (!oldPlan) {
             return res.status(404).json({ status: false, message: "Không tìm thấy kế hoạch" });
-        }
-
-        // Kiểm tra trạng thái 'Đã đặt cọc'
-        if (oldPlan.status === 'Đã đặt cọc') {
-            return res.status(403).json({
-                status: false,
-                message: "Không thể cập nhật kế hoạch đã đặt cọc",
-            });
         }
 
         // Hàm ánh xạ ID
@@ -912,11 +909,7 @@ router.put('/update/:id', async (req, res) => {
         });
     } catch (error) {
         console.error("Lỗi khi cập nhật kế hoạch:", error);
-        res.status(500).json({
-            status: false,
-            message: "Lỗi khi cập nhật kế hoạch",
-            error: error.message,
-        });
+        res.status(500).json({ status: false, message: "Lỗi khi cập nhật kế hoạch", error: error.message });
     }
 });
 
@@ -1076,29 +1069,24 @@ router.post('/khaosat', async (req, res) => {
         }
 
         let plans = await Plan.find(filter)
-            .populate('SanhId', 'name price imageUrl SoLuongKhach')
-            .populate('　　　　　UserId', 'name email');
+            .populate('SanhId')
+            .populate('UserId', 'name email');
 
         const populatedPlans = await Promise.all(plans.map(async (plan) => {
-            const isDeposited = plan.status === 'Đã đặt cọc';
-
             const caterings = await Plan_catering.find({ PlanId: plan._id })
                 .populate({
                     path: 'CateringId',
-                    select: 'name price imageUrl',
-                    populate: { path: 'cate_cateringId', select: 'name' },
+                    populate: { path: 'cate_cateringId', select: 'name' }
                 });
             const decorates = await Plan_decorate.find({ PlanId: plan._id })
                 .populate({
                     path: 'DecorateId',
-                    select: 'name price imageUrl',
-                    populate: { path: 'Cate_decorateId', select: 'name' },
+                    populate: { path: 'Cate_decorateId', select: 'name' }
                 });
             const presents = await Plan_present.find({ PlanId: plan._id })
                 .populate({
                     path: 'PresentId',
-                    select: 'name price imageUrl',
-                    populate: { path: 'Cate_presentId', select: 'name' },
+                    populate: { path: 'Cate_presentId', select: 'name' }
                 });
 
             const soLuongBan = plansoluongkhach ? Math.ceil(parseInt(plansoluongkhach) / 10) : 0;
@@ -1106,18 +1094,17 @@ router.post('/khaosat', async (req, res) => {
             let totalCateringPrice = 0;
             if (soLuongBan > 0) {
                 totalCateringPrice = caterings.reduce((sum, item) => {
-                    const price = isDeposited && item.price ? item.price : (item.CateringId?.price || 0);
-                    return sum + (price * soLuongBan);
+                    const cateringPrice = item.CateringId?.price || 0;
+                    return sum + (cateringPrice * soLuongBan);
                 }, 0);
             }
 
             const totalDecoratePrice = decorates.reduce((sum, item) => {
-                const price = isDeposited && item.price ? item.price : (item.DecorateId?.price || 0);
-                return sum + price;
+                return sum + (item.DecorateId?.price || 0);
             }, 0);
 
             const totalPresentPrice = presents.reduce((sum, item) => {
-                const price = isDeposited && item.price ? item.price : (item.PresentId?.price || 0);
+                const price = item.PresentId?.price || 0;
                 const quantity = item.quantity || 1;
                 return sum + (price * quantity);
             }, 0);
@@ -1125,12 +1112,10 @@ router.post('/khaosat', async (req, res) => {
             const sanhPrice = plan.SanhId?.price || 0;
             const calculatedTotalPrice = sanhPrice + totalCateringPrice + totalDecoratePrice + totalPresentPrice;
 
-            // Chỉ cập nhật totalPrice và plansoluongkhach cho kế hoạch chưa đặt cọc
-            if (!isDeposited) {
-                plan.plansoluongkhach = plansoluongkhach || plan.plansoluongkhach;
-                plan.totalPrice = calculatedTotalPrice;
-                await plan.save();
-            }
+            // Cập nhật totalPrice và plansoluongkhach trong cơ sở dữ liệu
+            plan.plansoluongkhach = plansoluongkhach || plan.plansoluongkhach;
+            plan.totalPrice = calculatedTotalPrice;
+            await plan.save();
 
             const isCapacityValid = !plansoluongkhach || (plan.SanhId && plan.SanhId.SoLuongKhach >= parseInt(plansoluongkhach));
             const isWithinBudget = !planprice || (calculatedTotalPrice <= parseFloat(planprice));
@@ -1138,23 +1123,10 @@ router.post('/khaosat', async (req, res) => {
             if (isCapacityValid && isWithinBudget) {
                 return {
                     ...plan.toObject(),
-                    caterings: caterings.map(item => ({
-                        name: isDeposited && item.name ? item.name : item.CateringId?.name,
-                        price: isDeposited && item.price ? item.price : item.CateringId?.price,
-                        imageUrl: isDeposited && item.imageUrl ? item.imageUrl : item.CateringId?.imageUrl,
-                        cate_cateringId: item.CateringId?.cate_cateringId,
-                    })),
-                    decorates: decorates.map(item => ({
-                        name: isDeposited && item.name ? item.name : item.DecorateId?.name,
-                        price: isDeposited && item.price ? item.price : item.DecorateId?.price,
-                        imageUrl: isDeposited && item.imageUrl ? item.imageUrl : item.DecorateId?.imageUrl,
-                        Cate_decorateId: item.DecorateId?.Cate_decorateId,
-                    })),
+                    caterings: caterings.map(item => item.CateringId),
+                    decorates: decorates.map(item => item.DecorateId),
                     presents: presents.map(item => ({
-                        name: isDeposited && item.name ? item.name : item.PresentId?.name,
-                        price: isDeposited && item.price ? item.price : item.PresentId?.price,
-                        imageUrl: isDeposited && item.imageUrl ? item.imageUrl : item.PresentId?.imageUrl,
-                        Cate_presentId: item.PresentId?.Cate_presentId,
+                        ...item.PresentId.toObject(),
                         quantity: item.quantity || 1,
                     })),
                     totalPrice: calculatedTotalPrice,
@@ -1168,7 +1140,7 @@ router.post('/khaosat', async (req, res) => {
         res.status(200).json({
             status: true,
             message: "Lấy danh sách kế hoạch mặc định thành công",
-            data: validPlans,
+            data: validPlans
         });
     } catch (error) {
         console.error("Lỗi:", error);

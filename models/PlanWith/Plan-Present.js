@@ -11,9 +11,6 @@ const Plan_PresentSchema = new mongoose.Schema({
         ref: 'present', 
         required: true
     },
-    name: { type: String },
-    price: { type: Number },
-    imageUrl: { type: String },
     quantity : {type: Number, require: false},
     
 }, { timestamps: true });

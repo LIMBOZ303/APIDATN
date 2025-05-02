@@ -21,60 +21,6 @@ const planSchema = new mongoose.Schema({
     isTemporary: { type: Boolean, default: false },
 }, { timestamps: true });
 
-
-
-planSchema.pre('save', async function (next) {
-    try {
-        // Chỉ xử lý khi trạng thái chuyển sang 'Đã đặt cọc'
-        if (this.isModified('status') && this.status === 'Đã đặt cọc') {
-            const [caterings, decorates, presents] = await Promise.all([
-                Plan_catering.find({ PlanId: this._id }).populate('CateringId', 'name price imageUrl'),
-                Plan_decorate.find({ PlanId: this._id }).populate('DecorateId', 'name price imageUrl'),
-                Plan_present.find({ PlanId: this._id }).populate('PresentId', 'name price imageUrl'),
-            ]);
-
-            // Cập nhật thông tin tĩnh cho caterings
-            await Promise.all(caterings.map(async (catering) => {
-                if (catering.CateringId) {
-                    catering.name = catering.CateringId.name;
-                    catering.price = catering.CateringId.price;
-                    catering.imageUrl = catering.CateringId.imageUrl;
-                    await catering.save();
-                }
-            }));
-
-            // Cập nhật thông tin tĩnh cho decorates
-            await Promise.all(decorates.map(async (decorate) => {
-                if (decorate.DecorateId) {
-                    decorate.name = decorate.DecorateId.name;
-                    decorate.price = decorate.DecorateId.price;
-                    decorate.imageUrl = decorate.DecorateId.imageUrl;
-                    await decorate.save();
-                }
-            }));
-
-            // Cập nhật thông tin tĩnh cho presents
-            await Promise.all(presents.map(async (present) => {
-                if (present.PresentId) {
-                    present.name = present.PresentId.name;
-                    present.price = present.PresentId.price;
-                    present.imageUrl = present.PresentId.imageUrl;
-                    await present.save();
-                }
-            }));
-        }
-
-        // Tính totalPrice và priceDifference
-        await this.calculateTotalPrice();
-        this.priceDifference = (this.planprice || 0) - (this.totalPrice || 0);
-
-        next();
-    } catch (error) {
-        console.error(`Lỗi trong middleware pre('save') cho plan ${this._id}:`, error);
-        next(error);
-    }
-});
-
 // Middleware tính toán priceDifference
 planSchema.pre('save', async function (next) {
     try {
@@ -115,13 +61,13 @@ planSchema.methods.calculateTotalPrice = async function (plansoluongkhach = this
             return this.totalPrice;
         }
 
+        // Kiểm tra plansoluongkhach
         if (!plansoluongkhach || plansoluongkhach <= 0) {
             console.warn(`plansoluongkhach không hợp lệ cho plan ${this._id}: ${plansoluongkhach}`);
             plansoluongkhach = 0;
         }
 
-        const soLuongBan = plansoluongkhach ? Math.ceil(plansoluongkhach / 10) : 0;
-
+        // Lấy thông tin từ các collection liên quan
         const [sanh, caterings, decorates, presents] = await Promise.all([
             Sanh.findById(this.SanhId, 'price').lean(),
             Plan_catering.find({ PlanId: this._id }).populate('CateringId', 'price').lean(),
@@ -129,26 +75,26 @@ planSchema.methods.calculateTotalPrice = async function (plansoluongkhach = this
             Plan_present.find({ PlanId: this._id }).populate('PresentId', 'price').lean(),
         ]);
 
-        // Kiểm tra trạng thái để quyết định lấy giá từ đâu
-        const isDeposited = this.status === 'Đã đặt cọc';
+        // Tính số bàn dựa trên plansoluongkhach
+        const soLuongBan = plansoluongkhach ? Math.ceil(plansoluongkhach / 10) : 0;
 
         // Tính tổng giá catering
         const totalCateringPrice = soLuongBan > 0
             ? caterings.reduce((sum, item) => {
-                  const price = isDeposited && item.price ? item.price : (item.CateringId?.price || 0);
+                  const price = item.CateringId?.price || 0;
                   return sum + (price * soLuongBan);
               }, 0)
             : 0;
 
         // Tính tổng giá decorate
         const totalDecoratePrice = decorates.reduce((sum, item) => {
-            const price = isDeposited && item.price ? item.price : (item.DecorateId?.price || 0);
+            const price = item.DecorateId?.price || 0;
             return sum + price;
         }, 0);
 
         // Tính tổng giá presents
         const totalPresentPrice = presents.reduce((sum, item) => {
-            const price = isDeposited && item.price ? item.price : (item.PresentId?.price || 0);
+            const price = item.PresentId?.price || 0;
             const quantity = item.quantity || 1;
             return sum + (price * quantity);
         }, 0);
@@ -156,6 +102,7 @@ planSchema.methods.calculateTotalPrice = async function (plansoluongkhach = this
         // Tính totalPrice
         this.totalPrice = (sanh?.price || 0) + totalCateringPrice + totalDecoratePrice + totalPresentPrice;
 
+        // Ghi log để kiểm tra
         console.log(`Calculated totalPrice for plan ${this._id}:`, {
             sanhPrice: sanh?.price || 0,
             totalCateringPrice,
@@ -164,7 +111,6 @@ planSchema.methods.calculateTotalPrice = async function (plansoluongkhach = this
             totalPrice: this.totalPrice,
             plansoluongkhach,
             soLuongBan,
-            isDeposited,
         });
 
         return this.totalPrice;
@@ -174,6 +120,7 @@ planSchema.methods.calculateTotalPrice = async function (plansoluongkhach = this
         return this.totalPrice;
     }
 };
+
 // Virtual field: Trả về plandateevent dạng dd/mm/yyyy
 planSchema.virtual('plandateeventFormatted').get(function () {
     if (!this.plandateevent) return null;
