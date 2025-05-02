@@ -3,7 +3,6 @@ const Plan_catering = require('../models/PlanWith/Plan-Catering');
 const Plan_decorate = require('../models/PlanWith/Plan-Decorate');
 const Plan_present = require('../models/PlanWith/Plan-Present');
 const Sanh = require('../models/Sanh');
-const Transaction = require('../models/transactionModel');
 
 const planSchema = new mongoose.Schema({
     name: { type: String, required: false },
@@ -20,31 +19,15 @@ const planSchema = new mongoose.Schema({
     priceDifference: { type: Number, default: 0 },
     originalPlanId: { type: mongoose.Schema.Types.ObjectId, ref: 'Plan', default: null },
     isTemporary: { type: Boolean, default: false },
-    contractSigned: { type: Boolean, default: false }, // Thêm trường để theo dõi hợp đồng
 }, { timestamps: true });
 
-// Middleware tính toán priceDifference và khóa kế hoạch
+// Middleware tính toán priceDifference
 planSchema.pre('save', async function (next) {
     try {
-        // Nếu kế hoạch ở trạng thái "Đã đặt cọc" hoặc hợp đồng đã ký, bỏ qua cập nhật tự động
-        if (this.status === 'Đã đặt cọc' || this.contractSigned) {
-            console.log(`Kế hoạch ${this._id} ở trạng thái Đã đặt cọc hoặc hợp đồng đã ký, bỏ qua cập nhật tự động.`);
-            next();
-            return;
-        }
-
         // Chuyển đổi plandateevent nếu cần
         if (typeof this.plandateevent === 'string') {
             const [day, month, year] = this.plandateevent.split('/');
             this.plandateevent = new Date(`${year}-${month}-${day}T00:00:00.000Z`);
-        }
-
-        // Check for deposit transactions
-        const depositTransactions = await Transaction.find({ planId: this._id, status: 'Đã đặt cọc' });
-        if (depositTransactions.length > 0) {
-            console.log(`Tìm thấy giao dịch đặt cọc cho kế hoạch ${this._id}, bỏ qua cập nhật tự động.`);
-            next();
-            return;
         }
 
         // Tính totalPrice
@@ -55,7 +38,7 @@ planSchema.pre('save', async function (next) {
 
         next();
     } catch (error) {
-        console.error(`Lỗi trong middleware pre('save') cho kế hoạch ${this._id}:`, error);
+        console.error(`Lỗi trong middleware pre('save') cho plan ${this._id}:`, error);
         next(error);
     }
 });
@@ -73,14 +56,14 @@ planSchema.pre('save', async function (next) {
 planSchema.methods.calculateTotalPrice = async function (plansoluongkhach = this.plansoluongkhach) {
     try {
         if (!this.SanhId) {
-            console.warn(`SanhId không tồn tại cho kế hoạch ${this._id}`);
+            console.warn(`SanhId không tồn tại cho plan ${this._id}`);
             this.totalPrice = 0;
             return this.totalPrice;
         }
 
         // Kiểm tra plansoluongkhach
         if (!plansoluongkhach || plansoluongkhach <= 0) {
-            console.warn(`plansoluongkhach không hợp lệ cho kế hoạch ${this._id}: ${plansoluongkhach}`);
+            console.warn(`plansoluongkhach không hợp lệ cho plan ${this._id}: ${plansoluongkhach}`);
             plansoluongkhach = 0;
         }
 
@@ -132,7 +115,7 @@ planSchema.methods.calculateTotalPrice = async function (plansoluongkhach = this
 
         return this.totalPrice;
     } catch (error) {
-        console.error(`Lỗi tính totalPrice cho kế hoạch ${this._id}:`, error);
+        console.error(`Lỗi tính totalPrice cho plan ${this._id}:`, error);
         this.totalPrice = 0;
         return this.totalPrice;
     }
