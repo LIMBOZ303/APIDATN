@@ -13,6 +13,9 @@ const Plan_CateringSchema = new mongoose.Schema({
         ref: 'Catering', 
         required: true 
     },
+    name: { type: String },
+    price: { type: Number },
+    imageUrl: { type: String },
 }, { timestamps: true });
 
 // Sử dụng phương thức calculateTotalPrice từ Plan thay vì tính lại

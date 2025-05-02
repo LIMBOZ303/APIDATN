@@ -449,14 +449,16 @@ router.put('/cancel/:planId', async (req, res) => {
 // Hàm chung để populate và tính toán plans
 const populatePlans = async (plans) => {
     return await Promise.all(plans.map(async (plan) => {
+        const isDeposited = plan.status === 'Đã đặt cọc';
+
         const caterings = await Plan_catering.find({ PlanId: plan._id })
             .populate({
                 path: 'CateringId',
                 select: 'name price imageUrl',
                 populate: {
                     path: 'cate_cateringId',
-                    select: 'name'
-                }
+                    select: 'name',
+                },
             });
         const decorates = await Plan_decorate.find({ PlanId: plan._id })
             .populate({
@@ -464,8 +466,8 @@ const populatePlans = async (plans) => {
                 select: 'name price imageUrl',
                 populate: {
                     path: 'Cate_decorateId',
-                    select: 'name'
-                }
+                    select: 'name',
+                },
             });
         const presents = await Plan_present.find({ PlanId: plan._id })
             .populate({
@@ -473,12 +475,12 @@ const populatePlans = async (plans) => {
                 select: 'name price imageUrl',
                 populate: {
                     path: 'Cate_presentId',
-                    select: 'name'
-                }
+                    select: 'name',
+                },
             });
 
         // Nếu totalPrice chưa có hoặc bị lỗi, tự động cập nhật
-        if (!plan.totalPrice) {
+        if (!plan.totalPrice || !isDeposited) {
             await plan.calculateTotalPrice();
             await plan.save();
         }
@@ -486,11 +488,24 @@ const populatePlans = async (plans) => {
         return {
             ...plan.toObject(),
             totalPrice: plan.totalPrice,
-            caterings: caterings.map(item => item.CateringId),
-            decorates: decorates.map(item => item.DecorateId),
+            caterings: caterings.map(item => ({
+                name: isDeposited && item.name ? item.name : item.CateringId?.name,
+                price: isDeposited && item.price ? item.price : item.CateringId?.price,
+                imageUrl: isDeposited && item.imageUrl ? item.imageUrl : item.CateringId?.imageUrl,
+                cate_cateringId: item.CateringId?.cate_cateringId,
+            })),
+            decorates: decorates.map(item => ({
+                name: isDeposited && item.name ? item.name : item.DecorateId?.name,
+                price: isDeposited && item.price ? item.price : item.DecorateId?.price,
+                imageUrl: isDeposited && item.imageUrl ? item.imageUrl : item.DecorateId?.imageUrl,
+                Cate_decorateId: item.DecorateId?.Cate_decorateId,
+            })),
             presents: presents.map(item => ({
-                ...item.PresentId.toObject(), // Lấy toàn bộ thông tin của PresentId
-                quantity: item.quantity // Thêm quantity từ Plan_present
+                name: isDeposited && item.name ? item.name : item.PresentId?.name,
+                price: isDeposited && item.price ? item.price : item.PresentId?.price,
+                imageUrl: isDeposited && item.imageUrl ? item.imageUrl : item.PresentId?.imageUrl,
+                Cate_presentId: item.PresentId?.Cate_presentId,
+                quantity: item.quantity || 1,
             })),
         };
     }));

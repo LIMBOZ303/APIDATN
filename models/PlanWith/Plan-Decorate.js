@@ -11,6 +11,9 @@ const Plan_decorateSchema = new mongoose.Schema({
         ref: 'decorate', 
         required: true 
     },
+    name: { type: String },
+    price: { type: Number },
+    imageUrl: { type: String },
 }, { timestamps: true });
 
 // 🔄 Hàm cập nhật totalPrice
