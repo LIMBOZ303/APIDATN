@@ -644,64 +644,127 @@ router.get('/all', async (req, res) => {
 
 // Lấy kế hoạch theo ID
 // Lấy kế hoạch theo ID
+// Lấy kế hoạch theo ID
 router.get('/:id', async (req, res) => {
     try {
         const planId = req.params.id;
 
+        // Kiểm tra planId hợp lệ
         if (!planId.match(/^[0-9a-fA-F]{24}$/)) {
             return res.status(400).json({ status: false, message: "ID không hợp lệ" });
         }
 
+        // Tìm kế hoạch với populate cơ bản
         const plan = await Plan.findById(planId)
-            .populate('SanhId')
+            .populate('SanhId', 'name price imageUrl SoLuongKhach')
             .populate('UserId', 'name email');
 
         if (!plan) {
             return res.status(404).json({ status: false, message: "Không tìm thấy kế hoạch" });
         }
 
-        const caterings = await Plan_catering.find({ PlanId: planId })
-            .populate({
-                path: 'CateringId',
-                populate: { path: 'cate_cateringId', select: 'name' }
-            });
+        // Kiểm tra trạng thái kế hoạch
+        const status = plan.status?.toLowerCase();
+        const isPendingOrDeposited = ['đang chờ', 'đã đặt cọc'].includes(status);
 
-        const decorates = await Plan_decorate.find({ PlanId: planId })
-            .populate({
-                path: 'DecorateId',
-                populate: { path: 'Cate_decorateId', select: 'name' }
-            });
+        let responseData;
 
-        const presents = await Plan_present.find({ PlanId: planId })
-            .populate({
-                path: 'PresentId',
-                populate: { path: 'Cate_presentId', select: 'name' }
-            });
+        if (isPendingOrDeposited) {
+            // Trạng thái "Đang chờ" hoặc "Đã đặt cọc": Trả về dữ liệu hiện tại, chỉ populate tối thiểu
+            const [caterings, decorates, presents] = await Promise.all([
+                Plan_catering.find({ PlanId: planId }).populate({
+                    path: 'CateringId',
+                    select: 'name price imageUrl',
+                }),
+                Plan_decorate.find({ PlanId: planId }).populate({
+                    path: 'DecorateId',
+                    select: 'name price imageUrl',
+                }),
+                Plan_present.find({ PlanId: planId }).populate({
+                    path: 'PresentId',
+                    select: 'name price imageUrl',
+                }),
+            ]);
 
-        console.log('Raw presents data:', JSON.stringify(presents, null, 2));
+            responseData = {
+                ...plan.toObject(),
+                totalPrice: plan.totalPrice || 0,
+                caterings: caterings.map(item => item.CateringId),
+                decorates: decorates.map(item => item.DecorateId),
+                presents: presents.map(item => ({
+                    ...(item.PresentId ? item.PresentId.toObject() : {}),
+                    quantity: item.quantity || 1,
+                })),
+            };
+        } else {
+            // Các trạng thái khác: Populate đầy đủ và tính lại totalPrice
+            const [caterings, decorates, presents] = await Promise.all([
+                Plan_catering.find({ PlanId: planId }).populate({
+                    path: 'CateringId',
+                    select: 'name price imageUrl',
+                    populate: { path: 'cate_cateringId', select: 'name' },
+                }),
+                Plan_decorate.find({ PlanId: planId }).populate({
+                    path: 'DecorateId',
+                    select: 'name price imageUrl',
+                    populate: { path: 'Cate_decorateId', select: 'name' },
+                }),
+                Plan_present.find({ PlanId: planId }).populate({
+                    path: 'PresentId',
+                    select: 'name price imageUrl',
+                    populate: { path: 'Cate_presentId', select: 'name' },
+                }),
+            ]);
 
-        if (!plan.totalPrice) {
-            await plan.calculateTotalPrice();
-            await plan.save();
-        }
+            // Tính lại totalPrice nếu cần
+            if (!plan.totalPrice || plan.plansoluongkhach) {
+                await plan.calculateTotalPrice();
+                await plan.save();
+            }
 
-        res.status(200).json({
-            status: true,
-            message: "Lấy kế hoạch và dịch vụ thành công",
-            data: {
+            responseData = {
                 ...plan.toObject(),
                 totalPrice: plan.totalPrice,
                 caterings: caterings.map(item => item.CateringId),
                 decorates: decorates.map(item => item.DecorateId),
                 presents: presents.map(item => ({
                     ...(item.PresentId ? item.PresentId.toObject() : {}),
-                    quantity: item.quantity || 0 // Đảm bảo quantity luôn có giá trị
-                }))
-            }
+                    quantity: item.quantity || 1,
+                })),
+            };
+        }
+
+        // Kiểm tra dữ liệu đầy đủ
+        if (
+            !responseData.SanhId ||
+            !responseData.caterings ||
+            !responseData.decorates ||
+            !responseData.presents
+        ) {
+            console.warn(`Dữ liệu không đầy đủ cho plan ${planId}:`, {
+                hasSanhId: !!responseData.SanhId,
+                hasCaterings: !!responseData.caterings,
+                hasDecorates: !!responseData.decorates,
+                hasPresents: !!responseData.presents,
+            });
+            return res.status(400).json({
+                status: false,
+                message: "Dữ liệu kế hoạch không đầy đủ",
+            });
+        }
+
+        res.status(200).json({
+            status: true,
+            message: "Lấy kế hoạch và dịch vụ thành công",
+            data: responseData,
         });
     } catch (error) {
         console.error("Lỗi khi lấy kế hoạch:", error);
-        res.status(500).json({ status: false, message: "Lỗi khi lấy kế hoạch", error: error.message });
+        res.status(500).json({
+            status: false,
+            message: "Lỗi khi lấy kế hoạch",
+            error: error.message,
+        });
     }
 });
 
