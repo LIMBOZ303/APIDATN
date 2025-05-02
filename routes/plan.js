@@ -643,8 +643,6 @@ router.get('/all', async (req, res) => {
 
 
 // Lấy kế hoạch theo ID
-// Lấy kế hoạch theo ID
-// Lấy kế hoạch theo ID
 router.get('/:id', async (req, res) => {
     try {
         const planId = req.params.id;
@@ -665,40 +663,62 @@ router.get('/:id', async (req, res) => {
 
         // Kiểm tra trạng thái kế hoạch
         const status = plan.status?.toLowerCase();
-        const isPendingOrDeposited = ['Đang chờ', 'Đã đặt cọc'].includes(status);
+        const isPendingOrDeposited = ['đang chờ', 'đã đặt cọc'].includes(status);
 
-        let responseData;
+        // Lấy dữ liệu dịch vụ
+        const [caterings, decorates, presents] = await Promise.all([
+            Plan_catering.find({ PlanId: planId }).populate({
+                path: 'CateringId',
+                select: 'name price imageUrl',
+            }),
+            Plan_decorate.find({ PlanId: planId }).populate({
+                path: 'DecorateId',
+                select: 'name price imageUrl',
+            }),
+            Plan_present.find({ PlanId: planId }).populate({
+                path: 'PresentId',
+                select: 'name price imageUrl',
+            }),
+        ]);
 
-        if (isPendingOrDeposited) {
-            // Trạng thái "Đang chờ" hoặc "Đã đặt cọc": Trả về dữ liệu hiện tại, chỉ populate tối thiểu
-            const [caterings, decorates, presents] = await Promise.all([
-                Plan_catering.find({ PlanId: planId }).populate({
-                    path: 'CateringId',
-                    select: 'name price imageUrl',
-                }),
-                Plan_decorate.find({ PlanId: planId }).populate({
-                    path: 'DecorateId',
-                    select: 'name price imageUrl',
-                }),
-                Plan_present.find({ PlanId: planId }).populate({
-                    path: 'PresentId',
-                    select: 'name price imageUrl',
-                }),
-            ]);
+        // Chuẩn bị dữ liệu trả về
+        const responseData = {
+            ...plan.toObject(),
+            totalPrice: plan.totalPrice || 0,
+            caterings: caterings.map(item => ({
+                ...(item.CateringId ? item.CateringId.toObject() : {}),
+                quantity: item.quantity || Math.ceil((plan.plansoluongkhach || 0) / 10),
+            })),
+            decorates: decorates.map(item => (item.DecorateId ? item.DecorateId.toObject() : {})),
+            presents: presents.map(item => ({
+                ...(item.PresentId ? item.PresentId.toObject() : {}),
+                quantity: item.quantity || 1,
+            })),
+        };
 
-            responseData = {
-                ...plan.toObject(),
-                totalPrice: plan.totalPrice || 0,
-                caterings: caterings.map(item => item.CateringId),
-                decorates: decorates.map(item => item.DecorateId),
-                presents: presents.map(item => ({
-                    ...(item.PresentId ? item.PresentId.toObject() : {}),
-                    quantity: item.quantity || 1,
-                })),
-            };
-        } else {
-            // Các trạng thái khác: Populate đầy đủ và tính lại totalPrice
-            const [caterings, decorates, presents] = await Promise.all([
+        // Kiểm tra dữ liệu đầy đủ
+        if (
+            !responseData.SanhId ||
+            responseData.caterings.length === 0 ||
+            responseData.decorates.length === 0 ||
+            responseData.presents.length === 0
+        ) {
+            console.warn(`Dữ liệu không đầy đủ cho plan ${planId}:`, {
+                hasSanhId: !!responseData.SanhId,
+                hasCaterings: responseData.caterings.length > 0,
+                hasDecorates: responseData.decorates.length > 0,
+                hasPresents: responseData.presents.length > 0,
+            });
+            return res.status(400).json({
+                status: false,
+                message: "Dữ liệu kế hoạch không đầy đủ",
+            });
+        }
+
+        // Nếu không phải trạng thái "Đang chờ" hoặc "Đã đặt cọc", tính lại totalPrice
+        if (!isPendingOrDeposited) {
+            // Populate danh mục phụ nếu cần
+            const [cateringsWithCate, decoratesWithCate, presentsWithCate] = await Promise.all([
                 Plan_catering.find({ PlanId: planId }).populate({
                     path: 'CateringId',
                     select: 'name price imageUrl',
@@ -716,41 +736,23 @@ router.get('/:id', async (req, res) => {
                 }),
             ]);
 
+            // Cập nhật responseData với danh mục phụ
+            responseData.caterings = cateringsWithCate.map(item => ({
+                ...(item.CateringId ? item.CateringId.toObject() : {}),
+                quantity: item.quantity || Math.ceil((plan.plansoluongkhach || 0) / 10),
+            }));
+            responseData.decorates = decoratesWithCate.map(item => (item.DecorateId ? item.DecorateId.toObject() : {}));
+            responseData.presents = presentsWithCate.map(item => ({
+                ...(item.PresentId ? item.PresentId.toObject() : {}),
+                quantity: item.quantity || 1,
+            }));
+
             // Tính lại totalPrice nếu cần
             if (!plan.totalPrice || plan.plansoluongkhach) {
                 await plan.calculateTotalPrice();
                 await plan.save();
+                responseData.totalPrice = plan.totalPrice;
             }
-
-            responseData = {
-                ...plan.toObject(),
-                totalPrice: plan.totalPrice,
-                caterings: caterings.map(item => item.CateringId),
-                decorates: decorates.map(item => item.DecorateId),
-                presents: presents.map(item => ({
-                    ...(item.PresentId ? item.PresentId.toObject() : {}),
-                    quantity: item.quantity || 1,
-                })),
-            };
-        }
-
-        // Kiểm tra dữ liệu đầy đủ
-        if (
-            !responseData.SanhId ||
-            !responseData.caterings ||
-            !responseData.decorates ||
-            !responseData.presents
-        ) {
-            console.warn(`Dữ liệu không đầy đủ cho plan ${planId}:`, {
-                hasSanhId: !!responseData.SanhId,
-                hasCaterings: !!responseData.caterings,
-                hasDecorates: !!responseData.decorates,
-                hasPresents: !!responseData.presents,
-            });
-            return res.status(400).json({
-                status: false,
-                message: "Dữ liệu kế hoạch không đầy đủ",
-            });
         }
 
         res.status(200).json({
