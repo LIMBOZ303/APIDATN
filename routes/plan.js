@@ -601,18 +601,7 @@ router.get('/all', async (req, res) => {
             .populate('UserId', 'name email');
 
         const populatedPlans = await Promise.all(plans.map(async (plan) => {
-            // Kiểm tra trạng thái
-            if (['Đã hủy', 'Đã đặt cọc'].includes(plan.status)) {
-                return {
-                    ...plan.toObject(),
-                    totalPrice: plan.totalPrice || 0,
-                    caterings: [],
-                    decorates: [],
-                    presents: []
-                };
-            }
-
-            // Tính lại totalPrice và populate dữ liệu nếu trạng thái cho phép
+            // Tính lại totalPrice
             await plan.calculateTotalPrice();
             await plan.save();
 
@@ -654,6 +643,7 @@ router.get('/all', async (req, res) => {
 
 
 // Lấy kế hoạch theo ID
+// Lấy kế hoạch theo ID
 router.get('/:id', async (req, res) => {
     try {
         const planId = req.params.id;
@@ -670,23 +660,6 @@ router.get('/:id', async (req, res) => {
             return res.status(404).json({ status: false, message: "Không tìm thấy kế hoạch" });
         }
 
-        // Kiểm tra trạng thái
-        if (['Đã hủy', 'Đã đặt cọc'].includes(plan.status)) {
-            // Trả về dữ liệu hiện tại mà không tính lại totalPrice hoặc populate mới
-            return res.status(200).json({
-                status: true,
-                message: "Lấy kế hoạch thành công (dữ liệu cũ do trạng thái)",
-                data: {
-                    ...plan.toObject(),
-                    totalPrice: plan.totalPrice || 0,
-                    caterings: [], // Có thể lấy từ cache nếu cần
-                    decorates: [],
-                    presents: []
-                }
-            });
-        }
-
-        // Populate dữ liệu dịch vụ nếu trạng thái cho phép
         const caterings = await Plan_catering.find({ PlanId: planId })
             .populate({
                 path: 'CateringId',
@@ -705,6 +678,8 @@ router.get('/:id', async (req, res) => {
                 populate: { path: 'Cate_presentId', select: 'name' }
             });
 
+        console.log('Raw presents data:', JSON.stringify(presents, null, 2));
+
         if (!plan.totalPrice) {
             await plan.calculateTotalPrice();
             await plan.save();
@@ -720,7 +695,7 @@ router.get('/:id', async (req, res) => {
                 decorates: decorates.map(item => item.DecorateId),
                 presents: presents.map(item => ({
                     ...(item.PresentId ? item.PresentId.toObject() : {}),
-                    quantity: item.quantity || 0
+                    quantity: item.quantity || 0 // Đảm bảo quantity luôn có giá trị
                 }))
             }
         });
