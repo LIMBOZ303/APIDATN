@@ -43,6 +43,27 @@ planSchema.pre('save', async function (next) {
     }
 });
 
+
+planSchema.pre('save', async function (next) {
+    try {
+        // Check for deposit transactions
+        const depositTransactions = await Transaction.find({ planId: this._id, status: 'Đã đặt cọc' });
+        if (depositTransactions.length > 0) {
+            // Skip totalPrice calculation to lock data
+            next();
+            return;
+        }
+
+        // Proceed with calculations if no deposit
+        // Existing calculation code for totalPrice
+        await this.calculateTotalPrice();
+        this.priceDifference = (this.planprice || 0) - (this.totalPrice || 0);
+        next();
+    } catch (error) {
+        next(error);
+    }
+});
+
 // Middleware đặt tên Plan tự động nếu chưa có
 planSchema.pre('save', async function (next) {
     if (!this.name) {
