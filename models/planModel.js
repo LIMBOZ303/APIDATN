@@ -13,20 +13,9 @@ const planSchema = new mongoose.Schema({
     planprice: { type: Number, required: false },
     plansoluongkhach: { type: Number, required: false },
     plandateevent: { type: Date, required: false, index: true },
-    caterings: [{
-        CateringId: { type: mongoose.Schema.Types.ObjectId, ref: 'Catering' },
-        price: { type: Number } // Lưu giá tại thời điểm thêm
-    }],
-    decorates: [{
-        DecorateId: { type: mongoose.Schema.Types.ObjectId, ref: 'Decorate' },
-        price: { type: Number } // Lưu giá tại thời điểm thêm
-    }],
-    presents: [{
-        PresentId: { type: mongoose.Schema.Types.ObjectId, ref: 'Present' },
-        price: { type: Number }, // Lưu giá tại thời điểm thêm
-        quantity: { type: Number, default: 1 }
-    }],
-    sanhPrice: { type: Number }, // Lưu giá của Sanh tại thời điểm thêm
+    caterings: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Plan_Catering' }],
+    decorates: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Plan_decorate' }],
+    presents: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Plan_PresentSchema' }],
     priceDifference: { type: Number, default: 0 },
     originalPlanId: { type: mongoose.Schema.Types.ObjectId, ref: 'Plan', default: null },
     isTemporary: { type: Boolean, default: false },
@@ -83,7 +72,7 @@ planSchema.pre('save', async function (next) {
     next();
 });
 
-// Phương thức tính totalPrice dựa trên plansoluongkhach
+
 // Phương thức tính totalPrice dựa trên plansoluongkhach
 planSchema.methods.calculateTotalPrice = async function (plansoluongkhach = this.plansoluongkhach) {
     try {
@@ -113,42 +102,36 @@ planSchema.methods.calculateTotalPrice = async function (plansoluongkhach = this
             Plan_present.find({ PlanId: this._id }).populate('PresentId', 'price').lean(),
         ]);
 
-        // Lưu giá vào document
-        this.sanhPrice = sanh?.price || 0;
-        this.caterings = caterings.map(item => ({
-            CateringId: item.CateringId?._id,
-            price: item.CateringId?.price || 0
-        }));
-        this.decorates = decorates.map(item => ({
-            DecorateId: item.DecorateId?._id,
-            price: item.DecorateId?.price || 0
-        }));
-        this.presents = presents.map(item => ({
-            PresentId: item.PresentId?._id,
-            price: item.PresentId?.price || 0,
-            quantity: item.quantity || 1
-        }));
-
         // Tính số bàn dựa trên plansoluongkhach
         const soLuongBan = plansoluongkhach ? Math.ceil(plansoluongkhach / 10) : 0;
 
         // Tính tổng giá catering
         const totalCateringPrice = soLuongBan > 0
-            ? this.caterings.reduce((sum, item) => sum + (item.price * soLuongBan), 0)
+            ? caterings.reduce((sum, item) => {
+                  const price = item.CateringId?.price || 0;
+                  return sum + (price * soLuongBan);
+              }, 0)
             : 0;
 
         // Tính tổng giá decorate
-        const totalDecoratePrice = this.decorates.reduce((sum, item) => sum + item.price, 0);
+        const totalDecoratePrice = decorates.reduce((sum, item) => {
+            const price = item.DecorateId?.price || 0;
+            return sum + price;
+        }, 0);
 
         // Tính tổng giá presents
-        const totalPresentPrice = this.presents.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+        const totalPresentPrice = presents.reduce((sum, item) => {
+            const price = item.PresentId?.price || 0;
+            const quantity = item.quantity || 1;
+            return sum + (price * quantity);
+        }, 0);
 
         // Tính totalPrice
-        this.totalPrice = this.sanhPrice + totalCateringPrice + totalDecoratePrice + totalPresentPrice;
+        this.totalPrice = (sanh?.price || 0) + totalCateringPrice + totalDecoratePrice + totalPresentPrice;
 
         // Ghi log để kiểm tra
         console.log(`Calculated totalPrice for plan ${this._id}:`, {
-            sanhPrice: this.sanhPrice,
+            sanhPrice: sanh?.price || 0,
             totalCateringPrice,
             totalDecoratePrice,
             totalPresentPrice,
