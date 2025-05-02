@@ -111,13 +111,6 @@ planSchema.pre('save', async function (next) {
     }
 });
 
-// Ngăn chặn cập nhật dữ liệu nếu ở trạng thái "Đã đặt cọc"
-planSchema.pre('save', async function (next) {
-    if (this.status === 'Đã đặt cọc' && this.isModified() && !this.isModified('status')) {
-        return next(new Error('Không thể chỉnh sửa dữ liệu của kế hoạch đã đặt cọc.'));
-    }
-    next();
-});
 
 
 // Sử dụng lockedData nếu kế hoạch đã đặt cọc
