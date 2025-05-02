@@ -76,5 +76,16 @@ router.get("/:Id", async function (req, res) {
     }
 });
 
+router.get('/cate_catering/:cateId', async (req, res) => {
+    try {
+        const cateId = req.params.cateId;
+        const caterings = await Catering.find({ cate_cateringId: cateId }).populate('cate_cateringId');
+        res.json(caterings);
+    } catch (err) {
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+
 module.exports = router;
 
