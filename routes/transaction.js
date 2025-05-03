@@ -66,6 +66,72 @@ router.get('/transaction-stats', async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 });
+// API endpoint: Lấy danh sách giao dịch
+router.get('/transactions', async (req, res) => {
+  const userId = req.headers['user-id'];
+  const userRole = req.headers['user-role'];
+
+  if (!userId || !userRole) {
+    return res.status(401).json({ success: false, message: 'Missing userId or userRole' });
+  }
+
+  try {
+    const transactions = await Transaction.aggregate([
+      // Lọc giao dịch theo userId nếu không phải admin
+      ...(userRole !== 'admin'
+        ? [{ $match: { userId: new mongoose.Types.ObjectId(userId) } }]
+        : []),
+      // Lookup để lấy thông tin người dùng
+      {
+        $lookup: {
+          from: 'users',
+          localField: 'userId',
+          foreignField: '_id',
+          as: 'userId',
+        },
+      },
+      { $unwind: { path: '$userId', preserveNullAndEmptyArrays: true } },
+      // Lookup để lấy thông tin kế hoạch
+      {
+        $lookup: {
+          from: 'plans',
+          localField: 'planId',
+          foreignField: '_id',
+          as: 'planInfo',
+        },
+      },
+      { $unwind: { path: '$planInfo', preserveNullAndEmptyArrays: true } },
+      // Dự án các trường cần thiết
+      {
+        $project: {
+          _id: 1,
+          userId: {
+            _id: '$userId._id',
+            name: '$userId.name',
+            email: '$userId.email',
+          },
+          planId: 1,
+          planName: '$planInfo.name',
+          depositAmount: 1,
+          status: 1,
+          createdAt: 1,
+        },
+      },
+      // Sắp xếp theo ngày tạo (mới nhất trước)
+      { $sort: { createdAt: -1 } },
+    ]);
+
+    res.status(200).json({
+      status: true,
+      data: transactions,
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: false,
+      message: 'Error fetching transactions: ' + error.message,
+    });
+  }
+});
 
 // API endpoint: Lấy thống kê theo trạng thái cụ thể
 router.get('/transaction-stats/by-status/:status', async (req, res) => {
