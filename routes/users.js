@@ -234,7 +234,6 @@ router.post('/transactions', async (req, res) => {
 // API để lấy danh sách giao dịch (chỉ admin mới có quyền truy cập)
 router.get('/get/transactions', async (req, res) => {
   try {
-    // Lấy userId và role từ header
     const userId = req.headers['user-id'];
     const role = req.headers['user-role'];
 
@@ -242,7 +241,6 @@ router.get('/get/transactions', async (req, res) => {
       return res.status(401).json({ status: false, message: 'Thiếu thông tin userId hoặc role' });
     }
 
-    // Kiểm tra xem user có tồn tại và role có đúng không
     const user = await User.findById(userId);
     if (!user) {
       return res.status(404).json({ status: false, message: 'Không tìm thấy người dùng' });
@@ -252,7 +250,48 @@ router.get('/get/transactions', async (req, res) => {
       return res.status(403).json({ status: false, message: 'Chỉ admin mới có quyền truy cập' });
     }
 
-    const transactions = await Transaction.find().populate('userId', 'name email');
+    const transactions = await Transaction.aggregate([
+      // Lookup để lấy thông tin người dùng
+      {
+        $lookup: {
+          from: 'users',
+          localField: 'userId',
+          foreignField: '_id',
+          as: 'userId',
+        },
+      },
+      { $unwind: { path: '$userId', preserveNullAndEmptyArrays: true } },
+      // Lookup để lấy thông tin kế hoạch
+      {
+        $lookup: {
+          from: 'plans',
+          localField: 'planId',
+          foreignField: '_id',
+          as: 'planInfo',
+        },
+      },
+      { $unwind: { path: '$planInfo', preserveNullAndEmptyArrays: true } },
+      // Dự án các trường cần thiết
+      {
+        $project: {
+          _id: 1,
+          userId: {
+            _id: '$userId._id',
+            name: '$userId.name',
+            email: '$userId.email',
+          },
+          planId: 1,
+          planName: '$planInfo.name',
+          depositAmount: 1,
+          status: 1,
+          createdAt: 1,
+          orderCode: 1, // Nếu cần
+        },
+      },
+      // Sắp xếp theo ngày tạo (mới nhất trước)
+      { $sort: { createdAt: -1 } },
+    ]);
+
     res.status(200).json({
       status: true,
       message: 'Lấy danh sách giao dịch thành công',
@@ -290,16 +329,14 @@ router.patch('/transactions/:id/confirm', async (req, res) => {
 
     const { id } = req.params;
 
-    const transaction = await Transaction.findById(id);
+    const transaction = await Transaction.findById(id).populate('userId', 'name email');
     if (!transaction) {
       return res.status(404).json({ status: false, message: 'Không tìm thấy giao dịch' });
     }
 
-    // Cập nhật status của Transaction
     transaction.status = 'Đã đặt cọc';
     await transaction.save();
 
-    // Đồng bộ status của Plan
     const plan = await Plan.findById(transaction.planId);
     if (plan) {
       plan.status = 'Đã đặt cọc';
@@ -309,10 +346,16 @@ router.patch('/transactions/:id/confirm', async (req, res) => {
       console.warn(`Không tìm thấy Plan với ID ${transaction.planId}`);
     }
 
+    // Thêm planName vào response
+    const transactionWithPlanName = {
+      ...transaction.toObject(),
+      planName: plan ? plan.name : null,
+    };
+
     res.status(200).json({
       status: true,
       message: 'Giao dịch đã được xác nhận',
-      transaction,
+      transaction: transactionWithPlanName,
     });
   } catch (error) {
     console.error('Lỗi khi xác nhận giao dịch:', error);
