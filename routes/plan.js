@@ -88,6 +88,8 @@ router.put('/override/:planId', async (req, res) => {
         // Tính lại totalPrice
         await originalPlan.calculateTotalPrice();
         await originalPlan.save();
+        // Xóa kế hoạch mới sau khi ghi đè (tùy chọn)
+        await Plan.deleteOne({ _id: newPlanId });
 
         // Populate dữ liệu trả về
         const populatedPlan = await Plan.findById(planId)
