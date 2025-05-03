@@ -7,33 +7,96 @@ const Transaction = require('../models/transactionModel');
 // Hàm lấy thống kê giao dịch
 async function getTransactionStats() {
   try {
+    // 1. Thống kê theo trạng thái (byStatus)
     const statsByStatus = await Transaction.aggregate([
-      { $group: { _id: '$status', count: { $sum: 1 }, totalDeposit: { $sum: '$depositAmount' } } },
+      {
+        $lookup: {
+          from: 'plans',
+          localField: 'planId',
+          foreignField: '_id',
+          as: 'planInfo',
+        },
+      },
+      {
+        $unwind: {
+          path: '$planInfo',
+          preserveNullAndEmptyArrays: true, // Giữ các giao dịch không có planId
+        },
+      },
+      {
+        $group: {
+          _id: '$status',
+          count: { $sum: 1 },
+          totalDeposit: { $sum: '$depositAmount' },
+          plans: {
+            $push: {
+              planId: '$planId',
+              planName: '$planInfo.name',
+            },
+          },
+        },
+      },
       { $sort: { _id: 1 } },
     ]);
 
+    // 2. Tổng tiền đặt cọc (totalDepositAll)
     const totalDepositAll = await Transaction.aggregate([
       { $group: { _id: null, totalDeposit: { $sum: '$depositAmount' } } },
     ]);
 
+    // 3. Thống kê theo người dùng (byUser)
     const statsByUser = await Transaction.aggregate([
+      {
+        $lookup: {
+          from: 'plans',
+          localField: 'planId',
+          foreignField: '_id',
+          as: 'planInfo',
+        },
+      },
+      {
+        $unwind: {
+          path: '$planInfo',
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        $lookup: {
+          from: 'users',
+          localField: 'userId',
+          foreignField: '_id',
+          as: 'userInfo',
+        },
+      },
+      {
+        $unwind: {
+          path: '$userInfo',
+          preserveNullAndEmptyArrays: true,
+        },
+      },
       {
         $group: {
           _id: '$userId',
           count: { $sum: 1 },
           totalDeposit: { $sum: '$depositAmount' },
           statuses: { $push: '$status' },
+          username: { $first: '$userInfo.username' },
+          plans: {
+            $push: {
+              planId: '$planId',
+              planName: '$planInfo.name',
+            },
+          },
         },
       },
-      { $lookup: { from: 'users', localField: '_id', foreignField: '_id', as: 'userInfo' } },
-      { $unwind: { path: '$userInfo', preserveNullAndEmptyArrays: true } },
       {
         $project: {
           userId: '$_id',
-          username: '$userInfo.username',
+          username: 1,
           count: 1,
           totalDeposit: 1,
           statuses: 1,
+          plans: 1,
           _id: 0,
         },
       },
@@ -70,22 +133,48 @@ router.get('/transaction-stats', async (req, res) => {
 // API endpoint: Lấy thống kê theo trạng thái cụ thể
 router.get('/transaction-stats/by-status/:status', async (req, res) => {
   const { status } = req.params;
-  const validStatuses = ['Chưa đặt cọc', 'Đang chờ', 'Đã đặt cọc'];
+  const validStatuses = ['Chưa đặt cọc', 'Đang chờ', 'Đã đặt cọc', 'Đã hủy', 'Đang chờ xác nhận'];
   if (!validStatuses.includes(status)) {
     return res.status(400).json({
       success: false,
-      message: 'Invalid status. Must be one of: Chưa đặt cọc, Đang chờ, Đã đặt cọc',
+      message: 'Invalid status. Must be one of: Chưa đặt cọc, Đang chờ, Đã đặt cọc, Đã hủy, Đang chờ xác nhận',
     });
   }
 
   try {
     const stats = await Transaction.aggregate([
       { $match: { status } },
-      { $group: { _id: '$status', count: { $sum: 1 }, totalDeposit: { $sum: '$depositAmount' } } },
+      {
+        $lookup: {
+          from: 'plans',
+          localField: 'planId',
+          foreignField: '_id',
+          as: 'planInfo',
+        },
+      },
+      {
+        $unwind: {
+          path: '$planInfo',
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        $group: {
+          _id: '$status',
+          count: { $sum: 1 },
+          totalDeposit: { $sum: '$depositAmount' },
+          plans: {
+            $push: {
+              planId: '$planId',
+              planName: '$planInfo.name',
+            },
+          },
+        },
+      },
     ]);
     res.status(200).json({
       success: true,
-      data: stats[0] || { status, count: 0, totalDeposit: 0 },
+      data: stats[0] || { status, count: 0, totalDeposit: 0, plans: [] },
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -103,29 +192,63 @@ router.get('/transaction-stats/by-user/:userId', async (req, res) => {
     const stats = await Transaction.aggregate([
       { $match: { userId: new mongoose.Types.ObjectId(userId) } },
       {
+        $lookup: {
+          from: 'plans',
+          localField: 'planId',
+          foreignField: '_id',
+          as: 'planInfo',
+        },
+      },
+      {
+        $unwind: {
+          path: '$planInfo',
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        $lookup: {
+          from: 'users',
+          localField: 'userId',
+          foreignField: '_id',
+          as: 'userInfo',
+        },
+      },
+      {
+        $unwind: {
+          path: '$userInfo',
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
         $group: {
           _id: '$userId',
           count: { $sum: 1 },
           totalDeposit: { $sum: '$depositAmount' },
           statuses: { $push: '$status' },
+          username: { $first: '$userInfo.username' },
+          plans: {
+            $push: {
+              planId: '$planId',
+              planName: '$planInfo.name',
+            },
+          },
         },
       },
-      { $lookup: { from: 'users', localField: '_id', foreignField: '_id', as: 'userInfo' } },
-      { $unwind: { path: '$userInfo', preserveNullAndEmptyArrays: true } },
       {
         $project: {
           userId: '$_id',
-          username: '$userInfo.username',
+          username: 1,
           count: 1,
           totalDeposit: 1,
           statuses: 1,
+          plans: 1,
           _id: 0,
         },
       },
     ]);
     res.status(200).json({
       success: true,
-      data: stats[0] || { userId, count: 0, totalDeposit: 0, statuses: [] },
+      data: stats[0] || { userId, count: 0, totalDeposit: 0, statuses: [], plans: [] },
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -135,20 +258,46 @@ router.get('/transaction-stats/by-user/:userId', async (req, res) => {
 // Hàm lấy tổng doanh thu theo tuần, quý, tháng, năm
 async function getRevenueStats() {
   try {
+    // Hàm phụ để tạo pipeline cơ bản
+    const basePipeline = [
+      {
+        $lookup: {
+          from: 'plans',
+          localField: 'planId',
+          foreignField: '_id',
+          as: 'planInfo',
+        },
+      },
+      {
+        $unwind: {
+          path: '$planInfo',
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+    ];
+
     // 1. Tổng doanh thu theo tuần
     const revenueByWeek = await Transaction.aggregate([
+      ...basePipeline,
       {
         $group: {
           _id: { year: { $year: '$createdAt' }, week: { $isoWeek: '$createdAt' } },
           totalDeposit: { $sum: '$depositAmount' },
           transactionCount: { $sum: 1 },
+          plans: {
+            $push: {
+              planId: '$planId',
+              planName: '$planInfo.name',
+            },
+          },
         },
       },
-      { $sort: { '_id.year': -1, '_id.week': -1 } },
+      { $sort: { '_id.year': -1, '_id.week': -1 } }
     ]);
 
     // 2. Tổng doanh thu theo quý
     const revenueByQuarter = await Transaction.aggregate([
+      ...basePipeline,
       {
         $group: {
           _id: {
@@ -157,6 +306,12 @@ async function getRevenueStats() {
           },
           totalDeposit: { $sum: '$depositAmount' },
           transactionCount: { $sum: 1 },
+          plans: {
+            $push: {
+              planId: '$planId',
+              planName: '$planInfo.name',
+            },
+          },
         },
       },
       { $sort: { '_id.year': -1, '_id.quarter': -1 } },
@@ -164,11 +319,18 @@ async function getRevenueStats() {
 
     // 3. Tổng doanh thu theo tháng
     const revenueByMonth = await Transaction.aggregate([
+      ...basePipeline,
       {
         $group: {
           _id: { year: { $year: '$createdAt' }, month: { $month: '$createdAt' } },
           totalDeposit: { $sum: '$depositAmount' },
           transactionCount: { $sum: 1 },
+          plans: {
+            $push: {
+              planId: '$planId',
+              planName: '$planInfo.name',
+            },
+          },
         },
       },
       { $sort: { '_id.year': -1, '_id.month': -1 } },
@@ -176,11 +338,18 @@ async function getRevenueStats() {
 
     // 4. Tổng doanh thu theo năm
     const revenueByYear = await Transaction.aggregate([
+      ...basePipeline,
       {
         $group: {
           _id: { year: { $year: '$createdAt' } },
           totalDeposit: { $sum: '$depositAmount' },
           transactionCount: { $sum: 1 },
+          plans: {
+            $push: {
+              planId: '$planId',
+              planName: '$planInfo.name',
+            },
+          },
         },
       },
       { $sort: { '_id.year': -1 } },
@@ -226,21 +395,49 @@ router.get('/revenue-stats/by-year/:year', async (req, res) => {
   try {
     const stats = await Transaction.aggregate([
       {
-        $match: { createdAt: { $gte: new Date(`${yearNum}-01-01`), $lte: new Date(`${yearNum}-12-31`) } },
+        $match: {
+          createdAt: {
+            $gte: new Date(`${yearNum}-01-01`),
+            $lte: new Date(`${yearNum}-12-31`),
+          },
+        },
       },
       {
-        $group: { _id: { year: { $year: '$createdAt' } }, totalDeposit: { $sum: '$depositAmount' }, transactionCount: { $sum: 1 } },
+        $lookup: {
+          from: 'plans',
+          localField: 'planId',
+          foreignField: '_id',
+          as: 'planInfo',
+        },
+      },
+      {
+        $unwind: {
+          path: '$planInfo',
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        $group: {
+          _id: { year: { $year: '$createdAt' } },
+          totalDeposit: { $sum: '$depositAmount' },
+          transactionCount: { $sum: 1 },
+          plans: {
+            $push: {
+              planId: '$planId',
+              planName: '$planInfo.name',
+            },
+          },
+        },
       },
     ]);
     res.status(200).json({
       success: true,
-      data: stats[0] || { year: yearNum, totalDeposit: 0, transactionCount: 0 },
+      data: stats[0] || { year: yearNum, totalDeposit: 0, transactionCount: 0, plans: [] },
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
 });
-
 // API endpoint: Lấy doanh thu theo quý cụ thể trong năm
 router.get('/revenue-stats/by-quarter/:year/:quarter', async (req, res) => {
   const { year, quarter } = req.params;
