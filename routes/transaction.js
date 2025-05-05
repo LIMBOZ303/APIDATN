@@ -132,10 +132,26 @@ router.get('/transaction-stats/by-user/:userId', async (req, res) => {
   }
 });
 
-// Hàm lấy tổng doanh thu theo tuần, quý, tháng, năm
+// Hàm lấy tổng doanh thu theo tuần, quý, tháng, năm, ngày
 async function getRevenueStats() {
   try {
-    // 1. Tổng doanh thu theo tuần
+    // 1. Tổng doanh thu theo ngày
+    const revenueByDay = await Transaction.aggregate([
+      {
+        $group: {
+          _id: {
+            year: { $year: '$createdAt' },
+            month: { $month: '$createdAt' },
+            day: { $dayOfMonth: '$createdAt' },
+          },
+          totalDeposit: { $sum: '$depositAmount' },
+          transactionCount: { $sum: 1 },
+        },
+      },
+      { $sort: { '_id.year': -1, '_id.month': -1, '_id.day': -1 } },
+    ]);
+
+    // 2. Tổng doanh thu theo tuần
     const revenueByWeek = await Transaction.aggregate([
       {
         $group: {
@@ -147,7 +163,7 @@ async function getRevenueStats() {
       { $sort: { '_id.year': -1, '_id.week': -1 } },
     ]);
 
-    // 2. Tổng doanh thu theo quý
+    // 3. Tổng doanh thu theo quý
     const revenueByQuarter = await Transaction.aggregate([
       {
         $group: {
@@ -162,7 +178,7 @@ async function getRevenueStats() {
       { $sort: { '_id.year': -1, '_id.quarter': -1 } },
     ]);
 
-    // 3. Tổng doanh thu theo tháng
+    // 4. Tổng doanh thu theo tháng
     const revenueByMonth = await Transaction.aggregate([
       {
         $group: {
@@ -174,7 +190,7 @@ async function getRevenueStats() {
       { $sort: { '_id.year': -1, '_id.month': -1 } },
     ]);
 
-    // 4. Tổng doanh thu theo năm
+    // 5. Tổng doanh thu theo năm
     const revenueByYear = await Transaction.aggregate([
       {
         $group: {
@@ -187,6 +203,7 @@ async function getRevenueStats() {
     ]);
 
     return {
+      byDay: revenueByDay,
       byWeek: revenueByWeek,
       byQuarter: revenueByQuarter,
       byMonth: revenueByMonth,
@@ -197,18 +214,117 @@ async function getRevenueStats() {
   }
 }
 
-// API endpoint: Lấy tổng doanh thu theo tuần, quý, tháng, năm
+// API endpoint: Lấy tổng doanh thu theo tuần, quý, tháng, năm, ngày
 router.get('/revenue-stats', async (req, res) => {
   try {
     const stats = await getRevenueStats();
     res.status(200).json({
       success: true,
       data: {
+        byDay: stats.byDay,
         byWeek: stats.byWeek,
         byQuarter: stats.byQuarter,
         byMonth: stats.byMonth,
         byYear: stats.byYear,
       },
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// API endpoint: Lấy doanh thu theo ngày cụ thể
+router.get('/revenue-stats/by-day/:year/:month/:day', async (req, res) => {
+  const { year, month, day } = req.params;
+  const yearNum = parseInt(year);
+  const monthNum = parseInt(month);
+  const dayNum = parseInt(day);
+
+  if (isNaN(yearNum) || yearNum < 1900 || yearNum > new Date().getFullYear()) {
+    return res.status(400).json({ success: false, message: 'Invalid year' });
+  }
+  if (isNaN(monthNum) || monthNum < 1 || monthNum > 12) {
+    return res.status(400).json({ success: false, message: 'Invalid month. Must be between 1 and 12' });
+  }
+  if (isNaN(dayNum) || dayNum < 1 || dayNum > 31) {
+    return res.status(400).json({ success: false, message: 'Invalid day. Must be between 1 and 31' });
+  }
+
+  try {
+    const startOfDay = moment(`${yearNum}-${monthNum}-${dayNum}`, 'YYYY-MM-DD').startOf('day').toDate();
+    const endOfDay = moment(`${yearNum}-${monthNum}-${dayNum}`, 'YYYY-MM-DD').endOf('day').toDate();
+
+    const stats = await Transaction.aggregate([
+      {
+        $match: {
+          createdAt: { $gte: startOfDay, $lte: endOfDay },
+        },
+      },
+      {
+        $group: {
+          _id: {
+            year: { $year: '$createdAt' },
+            month: { $month: '$createdAt' },
+            day: { $dayOfMonth: '$createdAt' },
+          },
+          totalDeposit: { $sum: '$depositAmount' },
+          transactionCount: { $sum: 1 },
+        },
+      },
+    ]);
+
+    res.status(200).json({
+      success: true,
+      data: stats[0] || { year: yearNum, month: monthNum, day: dayNum, totalDeposit: 0, transactionCount: 0 },
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// API endpoint: Lấy doanh thu theo ngày cụ thể
+router.get('/revenue-stats/by-day/:year/:month/:day', async (req, res) => {
+  const { year, month, day } = req.params;
+  const yearNum = parseInt(year);
+  const monthNum = parseInt(month);
+  const dayNum = parseInt(day);
+
+  if (isNaN(yearNum) || yearNum < 1900 || yearNum > new Date().getFullYear()) {
+    return res.status(400).json({ success: false, message: 'Invalid year' });
+  }
+  if (isNaN(monthNum) || monthNum < 1 || monthNum > 12) {
+    return res.status(400).json({ success: false, message: 'Invalid month. Must be between 1 and 12' });
+  }
+  if (isNaN(dayNum) || dayNum < 1 || dayNum > 31) {
+    return res.status(400).json({ success: false, message: 'Invalid day. Must be between 1 and 31' });
+  }
+
+  try {
+    const startOfDay = moment(`${yearNum}-${monthNum}-${dayNum}`, 'YYYY-MM-DD').startOf('day').toDate();
+    const endOfDay = moment(`${yearNum}-${monthNum}-${dayNum}`, 'YYYY-MM-DD').endOf('day').toDate();
+
+    const stats = await Transaction.aggregate([
+      {
+        $match: {
+          createdAt: { $gte: startOfDay, $lte: endOfDay },
+        },
+      },
+      {
+        $group: {
+          _id: {
+            year: { $year: '$createdAt' },
+            month: { $month: '$createdAt' },
+            day: { $dayOfMonth: '$createdAt' },
+          },
+          totalDeposit: { $sum: '$depositAmount' },
+          transactionCount: { $sum: 1 },
+        },
+      },
+    ]);
+
+    res.status(200).json({
+      success: true,
+      data: stats[0] || { year: yearNum, month: monthNum, day: dayNum, totalDeposit: 0, transactionCount: 0 },
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
